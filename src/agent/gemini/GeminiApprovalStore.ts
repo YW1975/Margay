@@ -84,4 +84,14 @@ export class GeminiApprovalStore extends BaseApprovalStore<GeminiApprovalKey> {
       identifier: cmd,
     }));
   }
+
+  /**
+   * Load approvals from persisted data (e.g., database rows)
+   * Used to restore approvals on agent startup
+   */
+  loadFromPersistedData(rows: Array<{ action: string; identifier: string }>): void {
+    for (const row of rows) {
+      this.approve({ action: row.action, identifier: row.identifier } as GeminiApprovalKey);
+    }
+  }
 }

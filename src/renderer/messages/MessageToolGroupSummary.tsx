@@ -7,18 +7,21 @@ import type { IMessageAcpToolCall, IMessageToolGroup } from '../../common/chatLi
 import './MessageToolGroupSummary.css';
 
 const ToolGroupMapper = (m: IMessageToolGroup) => {
-  return m.content.map(({ name, callId, description, confirmationDetails, status }) => {
+  return m.content.map(({ name, callId, description, confirmationDetails, status, resultDisplay }) => {
     let desc = description.slice(0, 100);
     const type = confirmationDetails?.type;
     if (type === 'edit') desc = confirmationDetails.fileName;
     if (type === 'exec') desc = confirmationDetails.command;
     if (type === 'info') desc = confirmationDetails.urls?.join(';') || confirmationDetails.title;
     if (type === 'mcp') desc = confirmationDetails.serverName + ':' + confirmationDetails.toolName;
+    // Shell output: resultDisplay is a string for execute commands
+    const output = typeof resultDisplay === 'string' ? resultDisplay : undefined;
     return {
       key: callId,
       name: name,
       desc,
       status: (status === 'Success' ? 'success' : status === 'Error' ? 'error' : status === 'Canceled' ? 'default' : 'processing') as BadgeProps['status'],
+      output,
     };
   });
 };
@@ -33,6 +36,7 @@ const ToolAcpMapper = (message: IMessageAcpToolCall) => {
     desc: update.rawInput?.command || update.kind,
     status: update.status === 'completed' ? 'success' : update.status === 'failed' ? 'error' : ('default' as BadgeProps['status']),
     command,
+    output: update.rawOutput,
   };
 };
 const CopyCommandButton: React.FC<{ command: string }> = ({ command }) => {
@@ -79,10 +83,13 @@ const MessageToolGroupSummary: React.FC<{ messages: Array<IMessageToolGroup | IM
         <div className='p-l-20px flex flex-col gap-8px pt-8px'>
           {tools.map((item) => {
             return (
-              <div key={item.key} className='flex flex-row items-center color-#86909C gap-12px'>
-                <Badge status={item.status} className={item.status === 'processing' ? 'badge-breathing' : ''}></Badge>
-                <span>{`${item.name}(${item.desc})`} </span>
-                {'command' in item && item.command && <CopyCommandButton command={item.command} />}
+              <div key={item.key} className='flex flex-col gap-4px'>
+                <div className='flex flex-row items-center color-#86909C gap-12px'>
+                  <Badge status={item.status} className={item.status === 'processing' ? 'badge-breathing' : ''}></Badge>
+                  <span>{`${item.name}(${item.desc})`} </span>
+                  {'command' in item && item.command && <CopyCommandButton command={item.command} />}
+                </div>
+                {'output' in item && item.output && <pre className='m-l-20px bg-1 p-2 rounded text-xs overflow-x-auto max-h-60 overflow-y-auto whitespace-pre-wrap break-words color-#4E5969'>{item.output}</pre>}
               </div>
             );
           })}

@@ -63,7 +63,7 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable }) => {
   const menuStyle: React.CSSProperties = useMemo(() => {
     if (!isMacRuntime || !showSiderToggle) return {};
 
-    const marginLeft = layout?.isMobile ? '0px' : layout?.siderCollapsed ? '60px' : '210px';
+    const marginLeft = layout?.isMobile ? '0px' : layout?.siderCollapsed ? '80px' : '210px';
     return {
       marginLeft,
       transition: 'margin-left 0.28s cubic-bezier(0.4, 0, 0.2, 1)',

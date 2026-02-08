@@ -1,0 +1,207 @@
+diff --git a/node_modules/@office-ai/aioncli-core/dist/src/services/shellExecutionService.d.ts b/node_modules/@office-ai/aioncli-core/dist/src/services/shellExecutionService.d.ts
+index 39c5332..9919101 100644
+--- a/node_modules/@office-ai/aioncli-core/dist/src/services/shellExecutionService.d.ts
++++ b/node_modules/@office-ai/aioncli-core/dist/src/services/shellExecutionService.d.ts
+@@ -72,6 +72,16 @@ export type ShellOutputEvent = {
+  */
+ export declare class ShellExecutionService {
+     private static activePtys;
++    /**
++     * Tracks process group IDs (PGIDs) of all spawned shell processes.
++     * Used to kill orphaned background processes (e.g., `cmd &`) on cleanup.
++     */
++    static trackedProcessGroups: Set<number>;
++    /**
++     * Kill all tracked process groups. Used during agent cleanup to ensure
++     * background processes (spawned with `cmd &`) are terminated.
++     */
++    static killAllTrackedProcessGroups(): void;
+     /**
+      * Executes a shell command using `node-pty`, capturing all output and lifecycle events.
+      *
+diff --git a/node_modules/@office-ai/aioncli-core/dist/src/services/shellExecutionService.js b/node_modules/@office-ai/aioncli-core/dist/src/services/shellExecutionService.js
+index 0216102..56646dc 100644
+--- a/node_modules/@office-ai/aioncli-core/dist/src/services/shellExecutionService.js
++++ b/node_modules/@office-ai/aioncli-core/dist/src/services/shellExecutionService.js
+@@ -73,6 +73,12 @@ const getFullBufferText = (terminal) => {
+  */
+ export class ShellExecutionService {
+     static activePtys = new Map();
++    /**
++     * Tracks process group IDs (PGIDs) of all spawned shell processes.
++     * Used to kill orphaned background processes (e.g., `cmd &`) on cleanup.
++     * Even after the shell exits, the PGID persists if background children are alive.
++     */
++    static trackedProcessGroups = new Set();
+     /**
+      * Executes a shell command using `node-pty`, capturing all output and lifecycle events.
+      *
+@@ -139,6 +145,10 @@ export class ShellExecutionService {
+                     GIT_PAGER: 'cat',
+                 },
+             });
++            // Track PGID for background process cleanup (detached = new process group, PGID = child.pid)
++            if (child.pid && !isWindows) {
++                ShellExecutionService.trackedProcessGroups.add(child.pid);
++            }
+             const result = new Promise((resolve) => {
+                 let stdoutDecoder = null;
+                 let stderrDecoder = null;
+@@ -239,23 +249,33 @@ export class ShellExecutionService {
+                     handleExit(1, null);
+                 });
+                 const abortHandler = async () => {
+-                    if (child.pid && !exited) {
++                    if (child.pid) {
+                         if (isWindows) {
+                             cpSpawn('taskkill', ['/pid', child.pid.toString(), '/f', '/t']);
+                         }
+                         else {
+                             try {
++                                // Kill the entire process group — works even after shell exits
++                                // because background children (cmd &) keep the PGID alive
+                                 process.kill(-child.pid, 'SIGTERM');
+                                 await new Promise((res) => setTimeout(res, SIGKILL_TIMEOUT_MS));
+-                                if (!exited) {
++                                try {
+                                     process.kill(-child.pid, 'SIGKILL');
+                                 }
++                                catch (_e2) {
++                                    // ESRCH: process group already dead — safe to ignore
++                                }
+                             }
+                             catch (_e) {
+-                                if (!exited)
++                                try {
+                                     child.kill('SIGKILL');
++                                }
++                                catch (_e3) {
++                                    // child already dead — safe to ignore
++                                }
+                             }
+                         }
++                        ShellExecutionService.trackedProcessGroups.delete(child.pid);
+                     }
+                 };
+                 abortSignal.addEventListener('abort', abortHandler, { once: true });
+@@ -267,7 +287,8 @@ export class ShellExecutionService {
+                 });
+                 function cleanup() {
+                     exited = true;
+-                    abortSignal.removeEventListener('abort', abortHandler);
++                    // Don't remove abort handler — process group may still have
++                    // live background children that need cleanup on abort
+                     if (stdoutDecoder) {
+                         const remaining = stdoutDecoder.decode();
+                         if (remaining) {
+@@ -337,6 +358,10 @@ export class ShellExecutionService {
+                 });
+                 headlessTerminal.scrollToTop();
+                 this.activePtys.set(ptyProcess.pid, { ptyProcess, headlessTerminal });
++                // Track PGID for background process cleanup
++                if (ptyProcess.pid) {
++                    ShellExecutionService.trackedProcessGroups.add(ptyProcess.pid);
++                }
+                 let processingChain = Promise.resolve();
+                 let decoder = null;
+                 let output = null;
+@@ -472,7 +497,8 @@ export class ShellExecutionService {
+                 });
+                 ptyProcess.onExit(({ exitCode, signal }) => {
+                     exited = true;
+-                    abortSignal.removeEventListener('abort', abortHandler);
++                    // Don't remove abort handler — process group may still have
++                    // live background children that need cleanup on abort
+                     this.activePtys.delete(ptyProcess.pid);
+                     const finalize = () => {
+                         render(true);
+@@ -508,28 +534,41 @@ export class ShellExecutionService {
+                     });
+                 });
+                 const abortHandler = async () => {
+-                    if (ptyProcess.pid && !exited) {
++                    if (ptyProcess.pid) {
+                         if (os.platform() === 'win32') {
+                             ptyProcess.kill();
+                         }
+                         else {
+                             try {
+-                                // Kill the entire process group
++                                // Kill the entire process group — works even after shell exits
++                                // because background children (cmd &) keep the PGID alive
+                                 process.kill(-ptyProcess.pid, 'SIGTERM');
+                                 await new Promise((res) => setTimeout(res, SIGKILL_TIMEOUT_MS));
+-                                if (!exited) {
++                                try {
+                                     process.kill(-ptyProcess.pid, 'SIGKILL');
+                                 }
++                                catch (_e2) {
++                                    // ESRCH: process group already dead — safe to ignore
++                                }
+                             }
+                             catch (_e) {
+-                                // Fallback to killing just the process if the group kill fails
+-                                ptyProcess.kill('SIGTERM');
+-                                await new Promise((res) => setTimeout(res, SIGKILL_TIMEOUT_MS));
+-                                if (!exited) {
+-                                    ptyProcess.kill('SIGKILL');
++                                try {
++                                    // Fallback to killing just the process if the group kill fails
++                                    ptyProcess.kill('SIGTERM');
++                                    await new Promise((res) => setTimeout(res, SIGKILL_TIMEOUT_MS));
++                                    try {
++                                        ptyProcess.kill('SIGKILL');
++                                    }
++                                    catch (_e3) {
++                                        // already dead
++                                    }
++                                }
++                                catch (_e4) {
++                                    // already dead
+                                 }
+                             }
+                         }
++                        ShellExecutionService.trackedProcessGroups.delete(ptyProcess.pid);
+                     }
+                 };
+                 abortSignal.addEventListener('abort', abortHandler, { once: true });
+@@ -627,6 +666,39 @@ export class ShellExecutionService {
+      * @param pid The process ID of the target PTY.
+      * @param lines The number of lines to scroll.
+      */
++    /**
++     * Kill all tracked process groups. Used during agent cleanup to ensure
++     * background processes (spawned with `cmd &`) are terminated.
++     * Safe to call even if process groups are already dead (ESRCH is caught).
++     */
++    static killAllTrackedProcessGroups() {
++        const isWindows = os.platform() === 'win32';
++        if (isWindows) {
++            ShellExecutionService.trackedProcessGroups.clear();
++            return;
++        }
++        for (const pgid of ShellExecutionService.trackedProcessGroups) {
++            try {
++                process.kill(-pgid, 'SIGTERM');
++            }
++            catch (_e) {
++                // ESRCH: process group already dead
++            }
++        }
++        // Follow up with SIGKILL after grace period
++        const pgids = [...ShellExecutionService.trackedProcessGroups];
++        ShellExecutionService.trackedProcessGroups.clear();
++        setTimeout(() => {
++            for (const pgid of pgids) {
++                try {
++                    process.kill(-pgid, 'SIGKILL');
++                }
++                catch (_e) {
++                    // ESRCH: already dead
++                }
++            }
++        }, SIGKILL_TIMEOUT_MS);
++    }
+     static scrollPty(pid, lines) {
+         if (!this.isPtyActive(pid)) {
+             return;

@@ -81,7 +81,7 @@ const MessageAcpToolCall: React.FC<{ message: IMessageAcpToolCall }> = ({ messag
     return null;
   }
   const { update } = content;
-  const { toolCallId, kind, title, status, rawInput, content: diffContent } = update;
+  const { toolCallId, kind, title, status, rawInput, rawOutput, content: diffContent } = update;
 
   const getKindDisplayName = (kind: string) => {
     switch (kind) {
@@ -108,6 +108,11 @@ const MessageAcpToolCall: React.FC<{ message: IMessageAcpToolCall }> = ({ messag
             {executeCommand && <CopyCommandButton command={executeCommand} />}
           </div>
           {rawInput && <div className='text-sm'>{typeof rawInput === 'string' ? <MarkdownView>{`\`\`\`\n${rawInput}\n\`\`\``}</MarkdownView> : <pre className='bg-1 p-2 rounded text-xs overflow-x-auto'>{JSON.stringify(rawInput, null, 2)}</pre>}</div>}
+          {kind === 'execute' && rawOutput && (
+            <div className='mt-2'>
+              <pre className='bg-1 p-2 rounded text-xs overflow-x-auto max-h-60 overflow-y-auto whitespace-pre-wrap break-words'>{rawOutput}</pre>
+            </div>
+          )}
           {diffContent && diffContent.length > 0 && (
             <div>
               {diffContent.map((content, index) => (

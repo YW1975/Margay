@@ -414,9 +414,39 @@ const migration_v10: IMigration = {
 };
 
 /**
+ * Migration v10 -> v11: Add gemini_approvals table for permission persistence
+ * Stores "always allow" decisions so they persist across conversations and app restarts
+ */
+const migration_v11: IMigration = {
+  version: 11,
+  name: 'Add gemini_approvals table',
+  up: (db) => {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS gemini_approvals (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        action TEXT NOT NULL,
+        identifier TEXT NOT NULL DEFAULT '',
+        created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000),
+        UNIQUE(action, identifier)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_gemini_approvals_action ON gemini_approvals(action);
+    `);
+    console.log('[Migration v11] Added gemini_approvals table');
+  },
+  down: (db) => {
+    db.exec(`
+      DROP INDEX IF EXISTS idx_gemini_approvals_action;
+      DROP TABLE IF EXISTS gemini_approvals;
+    `);
+    console.log('[Migration v11] Rolled back: Removed gemini_approvals table');
+  },
+};
+
+/**
  * All migrations in order
  */
-export const ALL_MIGRATIONS: IMigration[] = [migration_v1, migration_v2, migration_v3, migration_v4, migration_v5, migration_v6, migration_v7, migration_v8, migration_v9, migration_v10];
+export const ALL_MIGRATIONS: IMigration[] = [migration_v1, migration_v2, migration_v3, migration_v4, migration_v5, migration_v6, migration_v7, migration_v8, migration_v9, migration_v10, migration_v11];
 
 /**
  * Get migrations needed to upgrade from one version to another

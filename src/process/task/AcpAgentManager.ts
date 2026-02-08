@@ -330,17 +330,30 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
 
   /**
    * Override kill() to ensure ACP CLI process tree is terminated.
-   * WorkerManage.kill() calls ForkTask.kill() which only kills the Electron utilityProcess,
-   * but AcpAgent spawns its own child processes via AcpConnection that need tree-kill cleanup.
+   * AcpConnection.disconnect() calls treeKill(pid, 'SIGTERM') which is async
+   * (spawns pgrep to find child PIDs). We add a grace period so treeKill has
+   * time to complete before the worker is killed.
+   *
+   * Residual risk: app.exit(0) path may not allow async cleanup to complete.
+   * This is a pre-existing cross-agent limitation (see Step 5 documentation).
    */
   kill() {
-    try {
-      this.agent?.stop?.().catch((error) => {
-        console.error('[AcpAgentManager] Failed to stop ACP agent during kill:', error);
-      });
-    } finally {
+    const GRACE_PERIOD_MS = 500; // treeKill needs time for pgrep + SIGTERM dispatch
+    const HARD_TIMEOUT_MS = 1500; // Force kill if stop() hangs
+
+    // Hard fallback: force kill after timeout regardless
+    const hardTimer = setTimeout(() => {
       super.kill();
-    }
+    }, HARD_TIMEOUT_MS);
+
+    // Graceful path: stop → grace period for treeKill → kill
+    void (this.agent?.stop?.() || Promise.resolve())
+      .catch(() => {})
+      .then(() => new Promise<void>((r) => setTimeout(r, GRACE_PERIOD_MS)))
+      .finally(() => {
+        clearTimeout(hardTimer);
+        super.kill();
+      });
   }
 
   /**

@@ -34,7 +34,7 @@
     "test:contract": "jest tests/contract",
     "test:integration": "jest tests/integration",
     "prepare": "husky",
-    "postinstall": "node scripts/postinstall.js"
+    "postinstall": "patch-package && node scripts/postinstall.js"
   },
   "keywords": [],
   "author": {

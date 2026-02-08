@@ -558,6 +558,7 @@ export interface ToolCallUpdate extends BaseSessionUpdate {
     title: string;
     kind: 'read' | 'edit' | 'execute';
     rawInput?: Record<string, unknown>;
+    rawOutput?: string; // Shell command output (stdout), populated from tool_call_update
     content?: ToolCallContentItem[];
     locations?: ToolCallLocationItem[];
   };

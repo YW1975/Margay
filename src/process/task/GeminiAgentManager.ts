@@ -63,6 +63,26 @@ export class GeminiAgentManager extends BaseAgentManager<
   /** Session-level approval store for "always allow" memory */
   readonly approvalStore = new GeminiApprovalStore();
 
+  /** Load persisted approvals from database into memory */
+  private loadPersistedApprovals(): void {
+    import('@process/database')
+      .then(({ getDatabase }) => {
+        const db = getDatabase();
+        const result = db.getGeminiApprovals();
+        if (!result.success) {
+          console.warn('[GeminiAgent] Failed to load persisted approvals from DB:', result.error);
+          return;
+        }
+        if (result.data && result.data.length > 0) {
+          this.approvalStore.loadFromPersistedData(result.data);
+          console.log(`[GeminiAgent] Loaded ${result.data.length} persisted approvals`);
+        }
+      })
+      .catch((error) => {
+        console.warn('[GeminiAgent] Failed to load persisted approvals:', error);
+      });
+  }
+
   private async injectHistoryFromDatabase(): Promise<void> {
     // ... (omitting injectHistoryFromDatabase for space)
   }
@@ -96,6 +116,8 @@ export class GeminiAgentManager extends BaseAgentManager<
     this.forceYoloMode = data.yoloMode;
     // 向后兼容 / Backward compatible
     this.contextContent = data.contextContent || data.presetRules;
+    // Load persisted approvals from database
+    this.loadPersistedApprovals();
     this.bootstrap = Promise.all([ProcessConfig.get('gemini.config'), this.getImageGenerationModel(), this.getMcpServers()])
       .then(async ([config, imageGenerationModel, mcpServers]) => {
         // 获取当前账号对应的 GOOGLE_CLOUD_PROJECT
@@ -115,9 +137,9 @@ export class GeminiAgentManager extends BaseAgentManager<
 
         // Build system instructions using unified agentUtils
         // 使用统一的 agentUtils 构建系统指令
-        // Always include 'cron' as a built-in skill
-        // 始终将 'cron' 作为内置 skill 包含
-        const allEnabledSkills = ['cron', ...(this.enabledSkills || [])];
+        // Always include 'cron' and 'shell-bg' as built-in skills
+        // 始终将 'cron' 和 'shell-bg' 作为内置 skill 包含
+        const allEnabledSkills = ['cron', 'shell-bg', ...(this.enabledSkills || [])];
         const finalPresetRules = await buildSystemInstructions({
           presetContext: this.presetRules,
           enabledSkills: allEnabledSkills,
@@ -503,6 +525,8 @@ export class GeminiAgentManager extends BaseAgentManager<
       if (confirmation?.action) {
         const keys = GeminiApprovalStore.createKeysFromConfirmation(confirmation.action, confirmation.commandType);
         this.approvalStore.approveAll(keys);
+        // Persist approvals to database for cross-session persistence
+        this.persistApprovals(keys);
       }
     }
 
@@ -510,6 +534,55 @@ export class GeminiAgentManager extends BaseAgentManager<
     // 发送确认到 worker，使用 callId 作为消息类型
     // Send confirmation to worker, using callId as message type
     return this.postMessagePromise(callId, data);
+  }
+
+  /** Persist approval keys to database */
+  private persistApprovals(keys: Array<{ action: string; identifier?: string }>): void {
+    import('@process/database')
+      .then(({ getDatabase }) => {
+        const db = getDatabase();
+        const failed: string[] = [];
+        for (const key of keys) {
+          const result = db.saveGeminiApproval(key.action, key.identifier || '');
+          if (!result.success) {
+            failed.push(`${key.action}:${key.identifier || ''}`);
+          }
+        }
+        if (failed.length > 0) {
+          console.warn(`[GeminiAgent] Failed to persist approvals: ${failed.join(', ')}`);
+        }
+      })
+      .catch((error) => {
+        console.warn('[GeminiAgent] Failed to persist approvals:', error);
+      });
+  }
+
+  /**
+   * Override kill() to ensure shell subprocess cleanup in the worker.
+   * Sends abort signal to worker first, waits for ShellExecutionService's
+   * SIGTERM→SIGKILL cleanup (200ms), then terminates the worker process.
+   */
+  kill() {
+    const GRACE_PERIOD_MS = 300; // Allow ShellExecutionService SIGTERM→SIGKILL (200ms) + margin
+    const HARD_TIMEOUT_MS = 1000; // Force kill if worker unresponsive
+
+    // Hard fallback: force kill after timeout regardless
+    const hardTimer = setTimeout(() => {
+      super.kill();
+    }, HARD_TIMEOUT_MS);
+
+    // Graceful path: stop → grace period → kill
+    // stop() triggers abort signal in worker, which kills tracked process groups
+    // Grace period allows SIGTERM→SIGKILL cycle to complete
+    void this.stop()
+      .catch(() => {
+        // Worker may already be dead — ignore
+      })
+      .then(() => new Promise<void>((resolve) => setTimeout(resolve, GRACE_PERIOD_MS)))
+      .finally(() => {
+        clearTimeout(hardTimer);
+        super.kill();
+      });
   }
 
   // Manually trigger context reload

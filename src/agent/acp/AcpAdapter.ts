@@ -231,7 +231,7 @@ export class AcpAdapter {
       return null;
     }
 
-    // Update the ToolCallUpdate content with new status and content
+    // Update the ToolCallUpdate content with new status, content, and rawOutput
     // Only overwrite fields that are actually present in the update to avoid undefined overwrites
     const updatedContent: ToolCallUpdate = {
       ...existingMessage.content,
@@ -239,6 +239,7 @@ export class AcpAdapter {
         ...existingMessage.content.update,
         ...(toolCallData.status !== undefined && { status: toolCallData.status }),
         ...(toolCallData.content !== undefined && { content: toolCallData.content }),
+        ...(toolCallData.rawOutput !== undefined && { rawOutput: toolCallData.rawOutput }),
       },
     };
 

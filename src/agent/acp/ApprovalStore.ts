@@ -33,22 +33,22 @@ export interface AcpApprovalKey {
 /**
  * Serialize an approval key to a string for use as a cache key
  *
- * Note: Only key operation identifiers (command, path, file_path) are included
- * in the hash. This means same operation with different descriptions will be
- * treated as identical and auto-approved. This is intentional for better UX -
- * users approve commands/paths, not descriptions.
+ * Approval granularity by kind:
+ * - execute: per-tool (kind + title only). "Always Allow" on any bash command
+ *   approves ALL future bash commands in the session. This is coarser than
+ *   Gemini's per-command-name granularity, but avoids excessive permission prompts.
+ * - edit/read/fetch: per-path (kind + title + path/file_path). Each file path
+ *   requires separate approval for safety.
  */
 function serializeKey(key: AcpApprovalKey): string {
-  // Normalize rawInput for consistent hashing
-  // Only include operation-identifying fields (not descriptions or metadata)
   const normalizedInput: Record<string, unknown> = {};
 
   if (key.rawInput) {
-    // Command is the primary identifier for execute operations
-    if (key.rawInput.command) {
-      normalizedInput.command = key.rawInput.command;
-    }
-    // For file operations, include path-related fields
+    // For execute operations: intentionally EXCLUDE command from key.
+    // This broadens "always allow" to cover all commands for the same tool
+    // (coarser than Gemini's per-command-name granularity).
+
+    // For file operations, include path-related fields for per-file approval
     if (key.rawInput.path) {
       normalizedInput.path = key.rawInput.path;
     }

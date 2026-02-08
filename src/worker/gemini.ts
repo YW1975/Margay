@@ -8,6 +8,7 @@
 // 1. 主进程管理子进程 -》 进程管理器，需要维护当前所有子进程，并负责子进程的通信操作
 // 2. 子进程管理，需要根据不同的agent处理不同的agent任务，同时所有子进程具备相同的通信机制
 import { GeminiAgent } from '@/agent/gemini';
+import { ShellExecutionService } from '@office-ai/aioncli-core';
 import { forkTask } from './utils';
 export default forkTask(({ data }, pipe) => {
   pipe.log('gemini.init', data);
@@ -37,6 +38,8 @@ export default forkTask(({ data }, pipe) => {
   });
   pipe.on('stop.stream', (_, deferred) => {
     agent.stop();
+    // Kill all tracked process groups (background processes spawned with `cmd &`)
+    ShellExecutionService.killAllTrackedProcessGroups();
     deferred.with(Promise.resolve());
   });
   pipe.on('init.history', (event: { text: string }, deferred) => {
@@ -44,6 +47,17 @@ export default forkTask(({ data }, pipe) => {
   });
   pipe.on('send.message', (event: { input: string; msg_id: string; files?: string[] }, deferred) => {
     deferred.with(agent.send(event.input, event.msg_id, event.files));
+  });
+
+  // Safety net: kill background process groups when worker is terminated
+  process.on('exit', () => {
+    for (const pgid of ShellExecutionService.trackedProcessGroups) {
+      try {
+        process.kill(-pgid, 'SIGKILL');
+      } catch {
+        // ESRCH: already dead
+      }
+    }
   });
 
   return agent.bootstrap;

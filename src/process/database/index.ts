@@ -1088,6 +1088,61 @@ export class AionUIDatabase {
   }
 
   /**
+   * ==================
+   * Gemini Approval operations
+   * Gemini 权限审批操作
+   * ==================
+   */
+
+  /**
+   * Get all stored approvals
+   */
+  getGeminiApprovals(): IQueryResult<Array<{ action: string; identifier: string }>> {
+    try {
+      const rows = this.db.prepare('SELECT action, identifier FROM gemini_approvals').all() as Array<{ action: string; identifier: string }>;
+      return { success: true, data: rows };
+    } catch (error: any) {
+      return { success: false, error: error.message, data: [] };
+    }
+  }
+
+  /**
+   * Save an approval (upsert)
+   */
+  saveGeminiApproval(action: string, identifier: string): IQueryResult<boolean> {
+    try {
+      this.db.prepare(`INSERT INTO gemini_approvals (action, identifier) VALUES (?, ?) ON CONFLICT(action, identifier) DO NOTHING`).run(action, identifier);
+      return { success: true, data: true };
+    } catch (error: any) {
+      return { success: false, error: error.message, data: false };
+    }
+  }
+
+  /**
+   * Delete an approval
+   */
+  deleteGeminiApproval(action: string, identifier: string): IQueryResult<boolean> {
+    try {
+      this.db.prepare('DELETE FROM gemini_approvals WHERE action = ? AND identifier = ?').run(action, identifier);
+      return { success: true, data: true };
+    } catch (error: any) {
+      return { success: false, error: error.message, data: false };
+    }
+  }
+
+  /**
+   * Clear all approvals
+   */
+  clearGeminiApprovals(): IQueryResult<boolean> {
+    try {
+      this.db.prepare('DELETE FROM gemini_approvals').run();
+      return { success: true, data: true };
+    } catch (error: any) {
+      return { success: false, error: error.message, data: false };
+    }
+  }
+
+  /**
    * Vacuum database to reclaim space
    */
   vacuum(): void {
