@@ -47,8 +47,8 @@ interface GeminiAgent2Options {
   contextContent?: string; // 向后兼容 / Backward compatible
   /** 内置 skills 目录路径，使用 aioncli-core SkillManager 加载 / Builtin skills directory path, loaded by aioncli-core SkillManager */
   skillsDir?: string;
-  /** 启用的 skills 列表，用于过滤 SkillManager 中的 skills / Enabled skills list for filtering skills in SkillManager */
-  enabledSkills?: string[];
+  /** 禁用的 skills 列表，传给 aioncli-core 原生 SkillManager / Disabled skills list passed to native SkillManager */
+  disabledSkills?: string[];
 }
 
 export class GeminiAgent {
@@ -80,8 +80,8 @@ export class GeminiAgent {
   private contextFileName: string | undefined;
   /** 内置 skills 目录路径 / Builtin skills directory path */
   private skillsDir?: string;
-  /** 启用的 skills 列表 / Enabled skills list */
-  private enabledSkills?: string[];
+  /** 禁用的 skills 列表（由 SkillDistributor 计算）/ Disabled skills list (computed by SkillDistributor) */
+  private disabledSkills?: string[];
   bootstrap: Promise<void>;
   static buildFileServer(workspace: string) {
     return new FileDiscoveryService(workspace);
@@ -101,7 +101,7 @@ export class GeminiAgent {
     this.onStreamEvent = options.onStreamEvent;
     this.presetRules = options.presetRules;
     this.skillsDir = options.skillsDir;
-    this.enabledSkills = options.enabledSkills;
+    this.disabledSkills = options.disabledSkills;
     // 向后兼容：优先使用 presetRules，其次 contextContent / Backward compatible: prefer presetRules, fallback to contextContent
     this.contextContent = options.contextContent || options.presetRules;
     this.initClientEnv();
@@ -258,18 +258,17 @@ export class GeminiAgent {
       yoloMode,
       mcpServers: this.mcpServers,
       skillsDir: this.skillsDir,
-      enabledSkills: this.enabledSkills,
     });
     await this.config.initialize();
 
     // aioncli-core 的 SkillManager.discoverSkills() 会重新从用户 skills 目录加载所有 skills
-    // 覆盖了 loadCliConfig 中的过滤，需要在这里重新应用 enabledSkills 过滤
+    // 覆盖了 loadCliConfig 中的过滤，需要在这里重新应用 disabledSkills 过滤
     // aioncli-core's SkillManager.discoverSkills() reloads all skills from user directory,
-    // overriding our filtering in loadCliConfig, so we need to re-apply enabledSkills filter here
-    if (this.enabledSkills && this.enabledSkills.length > 0) {
-      const enabledSet = new Set(this.enabledSkills);
-      this.config.getSkillManager().filterSkills((skill) => enabledSet.has(skill.name));
-      console.log(`[GeminiAgent] Filtered skills after initialize: ${this.enabledSkills.join(', ')}`);
+    // overriding our filtering in loadCliConfig, so we need to re-apply disabledSkills filter here
+    if (this.disabledSkills && this.disabledSkills.length > 0) {
+      const disabledSet = new Set(this.disabledSkills);
+      this.config.getSkillManager().filterSkills((skill) => !disabledSet.has(skill.name));
+      console.log(`[GeminiAgent] Filtered out disabled skills after initialize: ${this.disabledSkills.join(', ')}`);
     }
 
     // 对于 Google OAuth 认证，清除缓存的 OAuth 客户端以确保使用最新凭证

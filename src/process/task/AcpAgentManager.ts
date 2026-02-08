@@ -12,7 +12,8 @@ import { ProcessConfig } from '../initStorage';
 import { addMessage, addOrUpdateMessage, nextTickToLocalFinish } from '../message';
 import { handlePreviewOpenEvent } from '../utils/previewUtils';
 import { cronBusyGuard } from '@process/services/cron/CronBusyGuard';
-import { prepareFirstMessageWithSkillsIndex } from './agentUtils';
+import { prepareFirstMessage } from './agentUtils';
+import { distributeForClaude } from './SkillDistributor';
 import BaseAgentManager from './BaseAgentManager';
 import { hasCronCommands } from './CronCommandDetector';
 import { extractTextFromMessage, processCronInMessage } from './MessageMiddleware';
@@ -222,7 +223,10 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
         },
       });
       return this.agent.start().then(() => this.agent);
-    })();
+    })().catch((err) => {
+      this.bootstrap = undefined; // Clear cache so next initAgent() call retries
+      throw err;
+    });
     return this.bootstrap;
   }
 
@@ -234,6 +238,11 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
     // Mark conversation as busy to prevent cron jobs from running
     cronBusyGuard.setProcessing(this.conversation_id, true);
     try {
+      // Distribute skills on every message so newly installed skills are picked up
+      // 每次发消息前分发 skills，确保新安装的 skill 立即可见
+      if (this.options.workspace && (this.options.backend === 'claude' || this.options.backend === 'custom')) {
+        distributeForClaude(this.options.workspace, this.options.enabledSkills);
+      }
       await this.initAgent(this.options);
       // Save user message to chat history ONLY after successful sending
       if (data.msg_id && data.content) {
@@ -242,12 +251,11 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
           contentToSend = contentToSend.split(AIONUI_FILES_MARKER)[0].trimEnd();
         }
 
-        // 首条消息时注入预设规则和 skills 索引（来自智能助手配置）
-        // Inject preset context and skills INDEX on first message (from smart assistant config)
+        // 首条消息时注入预设规则（skills 通过 SkillDistributor 分发，引擎原生发现）
+        // Inject preset rules on first message (skills distributed via SkillDistributor, discovered natively by engine)
         if (this.isFirstMessage) {
-          contentToSend = await prepareFirstMessageWithSkillsIndex(contentToSend, {
+          contentToSend = await prepareFirstMessage(contentToSend, {
             presetContext: this.options.presetContext,
-            enabledSkills: this.options.enabledSkills,
           });
         }
 

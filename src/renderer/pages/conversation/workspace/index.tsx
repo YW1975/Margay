@@ -318,10 +318,13 @@ const ChatWorkspace: React.FC<WorkspaceProps> = ({ conversation_id, workspace, e
       };
 
       // Update the workspace in extra field / 更新 extra 中的 workspace 信息
+      // Clear stale ACP session fields to prevent resuming a session from the old workspace
       newConversation.extra = {
         ...(currentConversation.extra ?? {}),
         workspace: targetWorkspace,
         customWorkspace: true,
+        acpSessionId: undefined,
+        acpSessionUpdatedAt: undefined,
       };
 
       await ipcBridge.conversation.createWithConversation.invoke({

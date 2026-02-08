@@ -26,17 +26,24 @@ const ToolGroupMapper = (m: IMessageToolGroup) => {
   });
 };
 
+/** Safely extract text from a value that may be a string or ACP content object {type, text}. */
+const safeText = (value: unknown): string | undefined => {
+  if (typeof value === 'string') return value;
+  if (value && typeof value === 'object' && 'text' in value) return String((value as Record<string, unknown>).text);
+  return undefined;
+};
+
 const ToolAcpMapper = (message: IMessageAcpToolCall) => {
   const update = message.content.update;
   if (!update) return;
   const command = update.kind === 'execute' && update.rawInput?.command ? String(update.rawInput.command) : undefined;
   return {
     key: update.toolCallId,
-    name: update.rawInput?.description || update.title,
-    desc: update.rawInput?.command || update.kind,
+    name: safeText(update.rawInput?.description) || update.title,
+    desc: safeText(update.rawInput?.command) || update.kind,
     status: update.status === 'completed' ? 'success' : update.status === 'failed' ? 'error' : ('default' as BadgeProps['status']),
     command,
-    output: update.rawOutput,
+    output: safeText(update.rawOutput),
   };
 };
 const CopyCommandButton: React.FC<{ command: string }> = ({ command }) => {

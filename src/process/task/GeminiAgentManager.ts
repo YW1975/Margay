@@ -11,7 +11,7 @@ import { transformMessage } from '@/common/chatLib';
 import type { IResponseMessage } from '@/common/ipcBridge';
 import type { IMcpServer, TProviderWithModel } from '@/common/storage';
 import { ProcessConfig, getSkillsDir } from '@/process/initStorage';
-import { buildSystemInstructions } from './agentUtils';
+import { computeGeminiDisabledSkills } from './SkillDistributor';
 import { uuid } from '@/common/utils';
 import { getOauthInfoWithCache } from '@office-ai/aioncli-core';
 import { GeminiApprovalStore } from '../../agent/gemini/GeminiApprovalStore';
@@ -47,6 +47,8 @@ export class GeminiAgentManager extends BaseAgentManager<
     skillsDir?: string;
     /** 启用的 skills 列表 / Enabled skills list */
     enabledSkills?: string[];
+    /** 禁用的 skills 列表（传给 aioncli-core 原生 SkillManager）/ Disabled skills passed to native SkillManager */
+    disabledSkills?: string[];
     /** Yolo mode: auto-approve all tool calls / 自动允许模式 */
     yoloMode?: boolean;
   },
@@ -135,15 +137,9 @@ export class GeminiAgentManager extends BaseAgentManager<
           // If account retrieval fails, don't set projectId, let system use default
         }
 
-        // Build system instructions using unified agentUtils
-        // 使用统一的 agentUtils 构建系统指令
-        // Always include 'cron' and 'shell-bg' as built-in skills
-        // 始终将 'cron' 和 'shell-bg' 作为内置 skill 包含
-        const allEnabledSkills = ['cron', 'shell-bg', ...(this.enabledSkills || [])];
-        const finalPresetRules = await buildSystemInstructions({
-          presetContext: this.presetRules,
-          enabledSkills: allEnabledSkills,
-        });
+        // Convert enabledSkills (preset whitelist) to disabledSkills (aioncli-core native blacklist)
+        // 将 enabledSkills（预设白名单）转换为 disabledSkills（aioncli-core 原生黑名单）
+        const disabledSkills = computeGeminiDisabledSkills(this.enabledSkills);
 
         // Determine yoloMode: forceYoloMode (cron jobs) takes priority over config setting
         // 确定 yoloMode：forceYoloMode（定时任务）优先于配置设置
@@ -158,13 +154,14 @@ export class GeminiAgentManager extends BaseAgentManager<
           webSearchEngine: data.webSearchEngine,
           mcpServers,
           contextFileName: this.contextFileName,
-          presetRules: finalPresetRules,
+          presetRules: this.presetRules,
           contextContent: this.contextContent,
-          // Skills 通过 SkillManager 加载 / Skills loaded via SkillManager
+          // Skills discovered natively by aioncli-core SkillManager
+          // Skills 由 aioncli-core 原生 SkillManager 发现
           skillsDir: getSkillsDir(),
-          // 启用的 skills 列表，用于过滤 SkillManager 中的 skills
-          // Enabled skills list for filtering skills in SkillManager
-          enabledSkills: this.enabledSkills,
+          // Disabled skills list for native SkillManager filtering
+          // 禁用的 skills 列表，由原生 SkillManager 过滤
+          disabledSkills,
           // Yolo mode: auto-approve all tool calls / 自动允许模式
           yoloMode,
         });

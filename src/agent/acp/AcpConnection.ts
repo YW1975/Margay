@@ -830,7 +830,8 @@ export class AcpConnection {
       const requested = path.resolve(cwd);
 
       const relative = path.relative(workspaceRoot, requested);
-      const isInsideWorkspace = relative && !relative.startsWith('..') && !path.isAbsolute(relative);
+      if (relative === '') return defaultPath; // Same directory
+      const isInsideWorkspace = !relative.startsWith('..') && !path.isAbsolute(relative);
 
       if (isInsideWorkspace) {
         return relative.length === 0 ? defaultPath : relative;

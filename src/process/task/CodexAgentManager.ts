@@ -23,7 +23,8 @@ import { addMessage, addOrUpdateMessage } from '@process/message';
 import { cronBusyGuard } from '@process/services/cron/CronBusyGuard';
 import { ProcessConfig } from '@process/initStorage';
 import BaseAgentManager from '@process/task/BaseAgentManager';
-import { prepareFirstMessageWithSkillsIndex } from '@process/task/agentUtils';
+import { prepareFirstMessage } from '@process/task/agentUtils';
+import { distributeForCodex } from '@process/task/SkillDistributor';
 import { handlePreviewOpenEvent } from '@process/utils/previewUtils';
 import i18n from '@process/i18n';
 import { getConfiguredAppClientName, getConfiguredAppClientVersion, getConfiguredCodexMcpProtocolVersion, setAppConfig } from '../../common/utils/appConfig';
@@ -89,10 +90,15 @@ class CodexAgentManager extends BaseAgentManager<CodexAgentManagerData> implemen
       const codexConfig = await ProcessConfig.get('codex.config');
       const yoloMode = data.yoloMode ?? codexConfig?.yoloMode;
 
+      // Distribute AionUi skills to Codex discovery dir before agent starts
+      // 在 agent 启动前将 AionUi skills 分发到 Codex 发现目录
+      const codexWorkspace = data.workspace || process.cwd();
+      distributeForCodex(codexWorkspace, data.enabledSkills);
+
       this.agent = new CodexAgent({
         id: data.conversation_id,
         cliPath: data.cliPath,
-        workingDir: data.workspace || process.cwd(),
+        workingDir: codexWorkspace,
         eventHandler,
         sessionManager,
         fileOperationHandler,
@@ -194,11 +200,10 @@ class CodexAgentManager extends BaseAgentManager<CodexAgentManagerData> implemen
       if (this.isFirstMessage) {
         this.isFirstMessage = false;
 
-        // 注入智能助手的预设规则和 skills 索引（如果有）
-        // Inject preset context and skills INDEX from smart assistant (if available)
-        processedContent = await prepareFirstMessageWithSkillsIndex(processedContent, {
+        // 注入预设规则（skills 通过 SkillDistributor 分发，引擎原生发现）
+        // Inject preset rules (skills distributed via SkillDistributor, discovered natively by engine)
+        processedContent = await prepareFirstMessage(processedContent, {
           presetContext: this.options.presetContext,
-          enabledSkills: this.options.enabledSkills,
         });
 
         const result = await this.agent.newSession(this.workspace, processedContent);

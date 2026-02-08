@@ -178,21 +178,19 @@ const Layout: React.FC<{
 
         <ArcoLayout className={'size-full layout flex-1 min-h-0'}>
           <ArcoLayout.Sider
-            collapsedWidth={isMobile ? 0 : 64}
+            collapsedWidth={64}
             collapsed={collapsed}
             width={DEFAULT_SIDER_WIDTH}
             className={classNames('!bg-2 layout-sider', {
               collapsed: collapsed,
             })}
             style={
-              isMobile
+              isMobile && !collapsed
                 ? {
                     position: 'fixed',
                     left: 0,
                     zIndex: 100,
-                    transform: collapsed ? 'translateX(-100%)' : 'translateX(0)',
                     transition: 'none',
-                    pointerEvents: collapsed ? 'none' : 'auto',
                   }
                 : undefined
             }
@@ -246,7 +244,7 @@ const Layout: React.FC<{
               if (isMobile && !collapsed) setCollapsed(true);
             }}
             style={
-              isMobile
+              isMobile && !collapsed
                 ? {
                     width: '100vw',
                   }
