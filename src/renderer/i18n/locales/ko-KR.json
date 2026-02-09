@@ -505,7 +505,7 @@
     "engineNativeSkills": "감지된 스킬",
     "engineNativeDescription": "엔진 디렉토리에서 에이전트가 생성한 스킬로, Margay에서 관리하지 않습니다.",
     "noEngineNativeSkills": "엔진 네이티브 스킬이 감지되지 않았습니다. 에이전트가 생성한 스킬이 여기에 표시됩니다.",
-    "importToAionUi": "가져오기",
+    "importToMargay": "가져오기",
     "noSkillMd": "SKILL.md 누락 — 가져올 수 없음",
     "globalSkills": "글로벌 스킬",
     "globalSkillsDescription": "홈 디렉토리 수준에 설치된 스킬(~/.claude/skills/, ~/.gemini/skills/). 읽기 전용.",

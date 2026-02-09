@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 Margay (forked from AionUi)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -10,7 +10,7 @@ import type { IMcpServer } from '../../../../common/storage';
 import { ProcessConfig } from '../../../initStorage';
 
 /**
- * AionUi 本地 MCP 代理实现
+ * Margay 本地 MCP 代理实现
  *
  * 专门用于管理通过 @office-ai/aioncli-core 运行的本地 Gemini CLI 的 MCP 配置
  *
@@ -21,12 +21,11 @@ import { ProcessConfig } from '../../../initStorage';
  *
  * 与其他 ACP Backend MCP Agents 的区别：
  * - ACP Backend Agents: 管理真实的 CLI 工具的 MCP 配置 (如 claude mcp, qwen mcp 命令)
- * - AionuiMcpAgent: 管理 AionUi 本地 @office-ai/aioncli-core 的运行时 MCP 配置
+ * - MargayMcpAgent: 管理 Margay 本地 @office-ai/aioncli-core 的运行时 MCP 配置
  */
-export class AionuiMcpAgent extends AbstractMcpAgent {
+export class MargayMcpAgent extends AbstractMcpAgent {
   constructor() {
-    // 使用 'aionui' 作为 backend type 来区分真实的 Gemini CLI
-    // 虽然配置最终被 GeminiAgentManager 使用，但在 MCP 管理层面它是独立的 agent
+    // 使用 'aionui' 作为 backend type (保持向后兼容，已存入数据库)
     super('aionui');
   }
 
@@ -37,7 +36,7 @@ export class AionuiMcpAgent extends AbstractMcpAgent {
   }
 
   /**
-   * 检测 AionUi 管理的 MCP 配置
+   * 检测 Margay 管理的 MCP 配置
    * 从 ProcessConfig 的统一配置中读取
    */
   async detectMcpServers(_cliPath?: string): Promise<IMcpServer[]> {
@@ -54,13 +53,13 @@ export class AionuiMcpAgent extends AbstractMcpAgent {
         return supportedTypes.includes(server.transport.type);
       });
     } catch (error) {
-      console.warn('[AionuiMcpAgent] Failed to detect MCP servers:', error);
+      console.warn('[MargayMcpAgent] Failed to detect MCP servers:', error);
       return [];
     }
   }
 
   /**
-   * 安装 MCP 服务器到 AionUi 配置
+   * 安装 MCP 服务器到 Margay 配置
    * 实际上是将配置合并到 ProcessConfig 的统一配置中
    */
   async installMcpServers(mcpServers: IMcpServer[]): Promise<McpOperationResult> {
@@ -86,7 +85,7 @@ export class AionuiMcpAgent extends AbstractMcpAgent {
             updatedAt: Date.now(),
           });
         } else {
-          console.warn(`[AionuiMcpAgent] Skipping ${server.name}: unsupported transport type ${server.transport.type}`);
+          console.warn(`[MargayMcpAgent] Skipping ${server.name}: unsupported transport type ${server.transport.type}`);
         }
       });
 
@@ -94,27 +93,27 @@ export class AionuiMcpAgent extends AbstractMcpAgent {
       const mergedServers = Array.from(serverMap.values());
       await ProcessConfig.set('mcp.config', mergedServers);
 
-      console.log('[AionuiMcpAgent] Installed MCP servers:', mcpServers.map((s) => s.name).join(', '));
+      console.log('[MargayMcpAgent] Installed MCP servers:', mcpServers.map((s) => s.name).join(', '));
       return { success: true };
     } catch (error) {
-      console.error('[AionuiMcpAgent] Failed to install MCP servers:', error);
+      console.error('[MargayMcpAgent] Failed to install MCP servers:', error);
       return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
   }
 
   /**
-   * 从 AionUi 配置中移除 MCP 服务器
+   * 从 Margay 配置中移除 MCP 服务器
    *
-   * 注意：AionUi 的 MCP 配置由前端（renderer 层）统一管理
+   * 注意：Margay 的 MCP 配置由前端（renderer 层）统一管理
    * 这里不做任何操作，因为：
    * 1. Toggle 关闭时：前端已经设置 enabled: false，不需要后端再次修改
    * 2. 删除服务器时：前端已经从配置中删除，不需要后端再次删除
    *
-   * AionuiMcpAgent 只负责读取配置（detectMcpServers）和添加配置（installMcpServers），
+   * MargayMcpAgent 只负责读取配置（detectMcpServers）和添加配置（installMcpServers），
    * 不应该在 remove 流程中修改配置，避免与前端的配置管理产生冲突
    */
   removeMcpServer(mcpServerName: string): Promise<McpOperationResult> {
-    console.log(`[AionuiMcpAgent] Skip removing '${mcpServerName}' - config managed by renderer`);
+    console.log(`[MargayMcpAgent] Skip removing '${mcpServerName}' - config managed by renderer`);
     return Promise.resolve({ success: true });
   }
 }

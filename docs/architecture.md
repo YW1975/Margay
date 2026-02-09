@@ -1,8 +1,8 @@
-# AionUi Functional Architecture
+# Margay Functional Architecture
 
 ## Overview
 
-AionUi is a multi-process Electron desktop application that provides a unified chat interface for multiple AI agent backends. It supports plugin-based platform integration, reusable skill modules, and standardized tool sharing via MCP.
+Margay is a multi-process Electron desktop application that provides a unified chat interface for multiple AI agent backends. It supports plugin-based platform integration, reusable skill modules, and standardized tool sharing via MCP.
 
 ---
 

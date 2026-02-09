@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 Margay (forked from AionUi)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -278,7 +278,7 @@ const SkillsManagement: React.FC = () => {
                     {!skill.hasSkillMd && <div className='text-11px color-#F59E0B mt-2px'>{t('settings.noSkillMd', { defaultValue: 'Missing SKILL.md — cannot import' })}</div>}
                   </div>
                   <Button size='mini' type='outline' disabled={!skill.hasSkillMd || importingSkill === skill.name} loading={importingSkill === skill.name} onClick={() => void handleImportEngineNative(skill)}>
-                    {t('settings.importToAionUi', { defaultValue: 'Import' })}
+                    {t('settings.importToMargay', { defaultValue: 'Import' })}
                   </Button>
                 </div>
               ))}

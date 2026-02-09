@@ -783,7 +783,7 @@
     "engineNativeSkills": "Detected Skills",
     "engineNativeDescription": "Skills created by agents in engine directories, not managed by Margay.",
     "noEngineNativeSkills": "No engine-native skills detected. Skills created by agents will appear here.",
-    "importToAionUi": "Import",
+    "importToMargay": "Import",
     "noSkillMd": "Missing SKILL.md — cannot import",
     "globalSkills": "Global Skills",
     "globalSkillsDescription": "Skills installed at home directory level (~/.claude/skills/, ~/.gemini/skills/). Read-only.",
