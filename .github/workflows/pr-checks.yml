@@ -256,17 +256,17 @@ jobs:
 
             core.info('Posted PR summary.');
 
-  # Job 4: Trigger Gemini AI review
-  review:
-    name: AI Review
-    needs: [summary]
-    if: |
-      always() &&
-      (needs.summary.result == 'success' || needs.summary.result == 'skipped')
-    uses: './.github/workflows/gemini-review.yml'
-    permissions:
-      contents: read
-      id-token: write
-      issues: write
-      pull-requests: write
-    secrets: inherit
+  # Job 4: Gemini AI review — disabled for Margay (no Gemini API secrets configured)
+  # review:
+  #   name: AI Review
+  #   needs: [summary]
+  #   if: |
+  #     always() &&
+  #     (needs.summary.result == 'success' || needs.summary.result == 'skipped')
+  #   uses: './.github/workflows/gemini-review.yml'
+  #   permissions:
+  #     contents: read
+  #     id-token: write
+  #     issues: write
+  #     pull-requests: write
+  #   secrets: inherit
