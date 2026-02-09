@@ -258,7 +258,7 @@ jobs:
             let message;
             if (selectedLabels.length > 0) {
               const labelList = selectedLabels.map(l => `\`${l}\``).join(', ');
-              message = `🏷️ **Auto-triage complete**\n\nI've analyzed this issue and applied the following labels: ${labelList}\n\nThis issue has been added to our [Project Roadmap](https://github.com/orgs/iOfficeAI/projects/5) for tracking.`;
+              message = `🏷️ **Auto-triage complete**\n\nI've analyzed this issue and applied the following labels: ${labelList}\n\nThis issue has been added to our [Project Roadmap](https://github.com/YW1975/Margay/projects) for tracking.`;
             } else {
               message = `🤖 **Auto-triage complete**\n\nI couldn't determine appropriate labels for this issue. A maintainer will review it shortly.`;
             }

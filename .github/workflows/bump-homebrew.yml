@@ -1,8 +1,7 @@
 name: Bump Homebrew Cask
 
+# Disabled: Homebrew tap not yet set up. Re-enable after first release.
 on:
-  release:
-    types: [published]
   workflow_dispatch:
     inputs:
       tag:
@@ -46,18 +45,18 @@ jobs:
         uses: eugenesvk/action-homebrew-bump-cask@v3
         with:
           token: ${{ secrets.HOMEBREW_GITHUB_TOKEN }}
-          cask: aionui
-          tap: homebrew/cask
+          cask: margay
+          tap: YW1975/homebrew-margay
           tag: ${{ steps.release.outputs.tag }}
           revision: ${{ github.event.release.target_commitish || github.sha }}
 
       - name: Notify on success
         if: success()
         run: |
-          echo "✅ Successfully created PR to bump aionui to ${{ steps.release.outputs.version }}"
+          echo "✅ Successfully created PR to bump margay to ${{ steps.release.outputs.version }}"
           echo ""
           echo "The PR will be reviewed by Homebrew maintainers."
-          echo "Once merged, users can install with: brew install --cask aionui"
+          echo "Once merged, users can install with: brew install --cask margay"
 
       - name: Notify on failure
         if: failure()
@@ -66,5 +65,5 @@ jobs:
           echo ""
           echo "You may need to manually create a PR:"
           echo "1. Fork https://github.com/Homebrew/homebrew-cask"
-          echo "2. Update Casks/a/aionui.rb with new version and SHA256"
+          echo "2. Update Casks/m/margay.rb with new version and SHA256"
           echo "3. Submit PR to Homebrew/homebrew-cask"

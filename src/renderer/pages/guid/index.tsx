@@ -40,7 +40,7 @@ import { updateWorkspaceTime } from '@/renderer/utils/workspaceHistory';
 import { isAcpRoutedPresetType, type AcpBackend, type AcpBackendConfig, type PresetAgentType } from '@/types/acpTypes';
 import { Button, ConfigProvider, Dropdown, Input, Menu, Tooltip } from '@arco-design/web-react';
 import { IconClose } from '@arco-design/web-react/icon';
-import { ArrowUp, Down, FolderOpen, Plus, Robot, UploadOne } from '@icon-park/react';
+import { ArrowUp, Down, FolderOpen, FolderPlus, Plus, Robot, UploadOne } from '@icon-park/react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -215,6 +215,7 @@ const Guid: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [files, setFiles] = useState<string[]>([]);
   const [dir, setDir] = useState<string>('');
+  const [additionalDirs, setAdditionalDirs] = useState<string[]>([]);
   const [currentModel, _setCurrentModel] = useState<TProviderWithModel>();
   const [isInputFocused, setIsInputFocused] = useState(false);
   const isInputActive = isInputFocused;
@@ -849,6 +850,7 @@ const Guid: React.FC = () => {
             defaultFiles: files,
             workspace: finalWorkspace,
             customWorkspace: isCustomWorkspace,
+            additionalDirs: additionalDirs.length > 0 ? additionalDirs : undefined,
             // Pass preset context (rules only)
             presetContext: isPreset ? presetRules : undefined,
             // 启用的 skills 列表（通过 SkillManager 加载）/ Enabled skills list (loaded via SkillManager)
@@ -911,6 +913,7 @@ const Guid: React.FC = () => {
             defaultFiles: files,
             workspace: finalWorkspace,
             customWorkspace: isCustomWorkspace,
+            additionalDirs: additionalDirs.length > 0 ? additionalDirs : undefined,
             backend: acpBackend,
             cliPath: acpAgentInfo?.cliPath,
             agentName: acpAgentInfo?.name, // 存储自定义代理的配置名称 / Store configured name for custom agents
@@ -983,6 +986,7 @@ const Guid: React.FC = () => {
         setMentionActiveIndex(0);
         setFiles([]);
         setDir('');
+        setAdditionalDirs([]);
       })
       .catch((error) => {
         console.error('Failed to send message:', error);
@@ -1294,6 +1298,20 @@ const Guid: React.FC = () => {
                             .catch((error) => {
                               console.error('Failed to open directory dialog:', error);
                             });
+                        } else if (key === 'additional-dirs') {
+                          ipcBridge.dialog.showOpen
+                            .invoke({ properties: ['openDirectory', 'multiSelections'] })
+                            .then((selectedDirs) => {
+                              if (selectedDirs && selectedDirs.length > 0) {
+                                setAdditionalDirs((prev) => {
+                                  const combined = [...prev, ...selectedDirs];
+                                  return Array.from(new Set(combined));
+                                });
+                              }
+                            })
+                            .catch((error) => {
+                              console.error('Failed to open directory dialog:', error);
+                            });
                         }
                       }}
                     >
@@ -1307,6 +1325,12 @@ const Guid: React.FC = () => {
                         <div className='flex items-center gap-8px'>
                           <FolderOpen theme='outline' size='16' fill={iconColors.secondary} style={{ lineHeight: 0 }} />
                           <span>{t('conversation.welcome.specifyWorkspace')}</span>
+                        </div>
+                      </Menu.Item>
+                      <Menu.Item key='additional-dirs'>
+                        <div className='flex items-center gap-8px'>
+                          <FolderPlus theme='outline' size='16' fill={iconColors.secondary} style={{ lineHeight: 0 }} />
+                          <span>{t('conversation.welcome.addAdditionalDir')}</span>
                         </div>
                       </Menu.Item>
                     </Menu>
@@ -1492,6 +1516,34 @@ const Guid: React.FC = () => {
                 </Tooltip>
               </div>
             )}
+            {additionalDirs.length > 0 && (
+              <div className='flex flex-col gap-4px mt-8px px-12px text-13px text-t-secondary' style={{ borderTop: dir ? 'none' : '1px solid var(--border-base)', paddingTop: dir ? 0 : 12 }}>
+                <div className='flex items-center gap-6px mb-2px'>
+                  <FolderPlus className='flex-shrink-0' theme='outline' size='14' fill={iconColors.secondary} style={{ lineHeight: 0 }} />
+                  <span className='text-12px'>{t('conversation.welcome.additionalDirs')}</span>
+                  {(selectedAgent === 'gemini' || (isPresetAgent && resolvePresetAgentType(selectedAgentInfo) === 'gemini')) && (
+                    <Tooltip content={t('conversation.welcome.additionalDirsGeminiUnsupported')} position='top'>
+                      <span className='text-11px text-[rgb(var(--warning-6))]'>⚠</span>
+                    </Tooltip>
+                  )}
+                  {(selectedAgent === 'codex' || (isPresetAgent && resolvePresetAgentType(selectedAgentInfo) === 'codex')) && (
+                    <Tooltip content={t('conversation.welcome.codexAdditionalDirsLimited')} position='top'>
+                      <span className='text-11px text-[rgb(var(--warning-6))]'>⚠</span>
+                    </Tooltip>
+                  )}
+                </div>
+                <div className='flex flex-wrap gap-4px'>
+                  {additionalDirs.map((dirPath) => (
+                    <div key={dirPath} className='flex items-center gap-4px bg-fill-2 px-8px py-2px rd-12px text-12px max-w-240px'>
+                      <Tooltip content={dirPath} position='top'>
+                        <span className='truncate'>{dirPath.split(/[/\\]/).pop() || dirPath}</span>
+                      </Tooltip>
+                      <IconClose className='flex-shrink-0 cursor-pointer hover:text-[rgb(var(--danger-6))] transition-colors' style={{ fontSize: 12 }} onClick={() => setAdditionalDirs((prev) => prev.filter((d) => d !== dirPath))} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Assistant Selection Area */}
@@ -1593,7 +1645,7 @@ const Guid: React.FC = () => {
               </svg>
               <span className='opacity-0 max-w-0 overflow-hidden text-14px text-[var(--color-text-2)] font-bold group-hover:opacity-100 group-hover:max-w-250px transition-all duration-300 ease-[cubic-bezier(0.2,0.8,0.3,1)]'>{t('conversation.welcome.quickActionFeedback')}</span>
             </div>
-            <div className='group flex items-center justify-center w-36px h-36px rd-50% bg-fill-0 cursor-pointer overflow-hidden whitespace-nowrap hover:w-200px hover:rd-28px hover:px-20px hover:justify-start hover:gap-10px transition-all duration-400 ease-[cubic-bezier(0.2,0.8,0.3,1)]' style={quickActionStyle(hoveredQuickAction === 'repo')} onMouseEnter={() => setHoveredQuickAction('repo')} onMouseLeave={() => setHoveredQuickAction(null)} onClick={() => openLink('https://github.com/iOfficeAI/AionUi')}>
+            <div className='group flex items-center justify-center w-36px h-36px rd-50% bg-fill-0 cursor-pointer overflow-hidden whitespace-nowrap hover:w-200px hover:rd-28px hover:px-20px hover:justify-start hover:gap-10px transition-all duration-400 ease-[cubic-bezier(0.2,0.8,0.3,1)]' style={quickActionStyle(hoveredQuickAction === 'repo')} onMouseEnter={() => setHoveredQuickAction('repo')} onMouseLeave={() => setHoveredQuickAction(null)} onClick={() => openLink('https://github.com/YW1975/Margay')}>
               <svg className='flex-shrink-0 text-[var(--color-text-3)] group-hover:text-[#FE9900] transition-colors duration-300' width='20' height='20' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'>
                 <path
                   d='M9.60416 1.91176C9.64068 1.83798 9.6971 1.77587 9.76704 1.73245C9.83698 1.68903 9.91767 1.66602 9.99999 1.66602C10.0823 1.66602 10.163 1.68903 10.233 1.73245C10.3029 1.77587 10.3593 1.83798 10.3958 1.91176L12.3208 5.81093C12.4476 6.06757 12.6348 6.2896 12.8663 6.45797C13.0979 6.62634 13.3668 6.73602 13.65 6.77759L17.955 7.40759C18.0366 7.41941 18.1132 7.45382 18.1762 7.50693C18.2393 7.56003 18.2862 7.62972 18.3117 7.7081C18.3372 7.78648 18.3402 7.87043 18.3205 7.95046C18.3007 8.03048 18.259 8.10339 18.2 8.16093L15.0867 11.1926C14.8813 11.3927 14.7277 11.6397 14.639 11.9123C14.5503 12.1849 14.5292 12.475 14.5775 12.7576L15.3125 17.0409C15.3269 17.1225 15.3181 17.2064 15.2871 17.2832C15.2561 17.3599 15.2041 17.4264 15.1371 17.4751C15.0701 17.5237 14.9908 17.5526 14.9082 17.5583C14.8256 17.5641 14.7431 17.5465 14.67 17.5076L10.8217 15.4843C10.5681 15.3511 10.286 15.2816 9.99958 15.2816C9.71318 15.2816 9.43106 15.3511 9.17749 15.4843L5.32999 17.5076C5.25694 17.5463 5.17449 17.5637 5.09204 17.5578C5.00958 17.5519 4.93043 17.5231 4.86357 17.4744C4.79672 17.4258 4.74485 17.3594 4.71387 17.2828C4.68289 17.2061 4.67404 17.1223 4.68833 17.0409L5.42249 12.7584C5.47099 12.4757 5.44998 12.1854 5.36128 11.9126C5.27257 11.6398 5.11883 11.3927 4.91333 11.1926L1.79999 8.16176C1.74049 8.10429 1.69832 8.03126 1.6783 7.95099C1.65827 7.87072 1.66119 7.78644 1.68673 7.70775C1.71226 7.62906 1.75938 7.55913 1.82272 7.50591C1.88607 7.4527 1.96308 7.41834 2.04499 7.40676L6.34916 6.77759C6.63271 6.73634 6.90199 6.62681 7.13381 6.45842C7.36564 6.29002 7.55308 6.06782 7.67999 5.81093L9.60416 1.91176Z'

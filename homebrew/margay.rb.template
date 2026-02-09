@@ -1,0 +1,34 @@
+# TEMPLATE: Not installable as-is. After first release:
+# 1. Compute SHA256 for arm64 and x64 DMG artifacts
+# 2. Replace the sha256 values below
+# 3. Rename this file to margay.rb
+# 4. Submit to your Homebrew tap
+
+cask "margay" do
+  arch arm: "arm64", intel: "x64"
+
+  version "VERSION"
+  sha256 arm:   "SHA256_ARM64",
+         intel: "SHA256_X64"
+
+  url "https://github.com/YW1975/Margay/releases/download/v#{version}/Margay-#{version}-mac-#{arch}.dmg"
+  name "Margay"
+  desc "Unified GUI for command-line AI agents"
+  homepage "https://github.com/YW1975/Margay"
+
+  livecheck do
+    url :url
+    strategy :github_latest
+  end
+
+  auto_updates true
+  depends_on macos: ">= :big_sur"
+
+  app "Margay.app"
+
+  zap trash: [
+    "~/Library/Application Support/Margay",
+    "~/Library/Preferences/com.margay.app.plist",
+    "~/Library/Saved Application State/com.margay.app.savedState",
+  ]
+end

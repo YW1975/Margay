@@ -1,4 +1,4 @@
-appId: com.aionui.app
+appId: com.margay.app
 productName: Margay
 executableName: Margay
 copyright: Copyright © 2024 Margay (forked from AionUi)
@@ -144,7 +144,7 @@ linux:
     entry:
       Name: Margay
       Comment: ${description}
-      Icon: aionui
+      Icon: margay
       Categories: Office;Utility;
 
 npmRebuild: false
@@ -175,6 +175,6 @@ electronDownload:
 
 publish:
   provider: github
-  owner: ${env.GITHUB_REPOSITORY_OWNER:-aionui}
-  repo: ${env.GITHUB_REPOSITORY_NAME:-AionUi}
+  owner: ${env.GITHUB_REPOSITORY_OWNER:-YW1975}
+  repo: ${env.GITHUB_REPOSITORY_NAME:-Margay}
   publishAutoUpdate: false

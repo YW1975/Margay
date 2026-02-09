@@ -237,8 +237,8 @@ export function initFsBridge(): void {
           targetUrl,
           {
             headers: {
-              'User-Agent': 'AionUI-Preview',
-              Referer: 'https://github.com/iOfficeAI/AionUi',
+              'User-Agent': 'Margay-Preview',
+              Referer: 'https://github.com/YW1975/Margay',
             },
           },
           (response) => {

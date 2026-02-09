@@ -344,6 +344,11 @@
       "specifyWorkspace": "フォルダーでチャット",
       "currentWorkspace": "現在のワークスペース",
       "clearWorkspace": "フォルダーを解除",
+      "addAdditionalDir": "追加ディレクトリ",
+      "additionalDirs": "追加ディレクトリ",
+      "removeAdditionalDir": "ディレクトリを削除",
+      "additionalDirsGeminiUnsupported": "Gemini は追加ディレクトリをサポートしていません",
+      "codexAdditionalDirsLimited": "Codex：ディレクトリはプロンプトで参照のみ。サンドボックスアクセスはメインワークスペースに限定されます",
       "quickActionsTitle": "Margay で何ができる？",
       "quickActionFeedback": "フィードバックや提案は？",
       "quickActionStar": "気に入った？スターをください！"
