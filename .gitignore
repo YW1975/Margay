@@ -168,3 +168,47 @@ my-video
 
 # Codex config
 .codex/
+
+# Electron build cache (literal dir name from env substitution)
+$\{env.ELECTRON_CACHE\}/
+
+# Internal planning and research docs (private strategy)
+docs/aioncli-core-coupling-analysis.md
+docs/task-system-analysis.md
+docs/next-phase-plan*.md
+docs/ocelot-branch-summary.md
+docs/fix-status.md
+docs/skill-distribution-rfc.md
+docs/step*-manual-test.md
+docs/v2-implementation-plan.md
+docs/upgrade-v2-requirements.md
+docs/dev-summary.md
+
+# Personal debug notes at project root
+claudecode skillinstall caused crash.md
+
+# Keys, certificates, and credentials
+*.pem
+*.key
+!package-lock.json
+*.p12
+*.pfx
+*.jks
+*.keystore
+credentials.json
+*-credentials.json
+service-account*.json
+
+# Auth tokens and package manager configs
+.npmrc
+.netrc
+.yarnrc
+
+# Environment files (comprehensive)
+.env.*
+!.env.example
+.env.local
+.env.*.local
+
+# macOS directory metadata
+**/.DS_Store

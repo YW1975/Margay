@@ -12,15 +12,16 @@ permissions:
 env:
   PROJECT_NUMBER: 5
   ORG_NAME: YW1975
-  PROJECT_ID: PVT_kwDOCKhK-M4BN1Ah
-  STATUS_FIELD_ID: PVTSSF_lADOCKhK-M4BN1Ahzg8tcak
-  # Status option IDs
-  STATUS_TO_TRIAGE: 8e8f2d59
-  STATUS_BLOCKED: cd8368e3
-  STATUS_READY_FOR_WORK: 864da50e
-  STATUS_IN_PROGRESS: a5c1c67b
-  STATUS_CLOSED: 91437030
-  STATUS_DONE: 1aa2425f
+  # TODO: Create a Margay GitHub Project board and fill in these IDs
+  PROJECT_ID: 'REPLACE_ME'
+  STATUS_FIELD_ID: 'REPLACE_ME'
+  # Status option IDs (from project board settings)
+  STATUS_TO_TRIAGE: 'REPLACE_ME'
+  STATUS_BLOCKED: 'REPLACE_ME'
+  STATUS_READY_FOR_WORK: 'REPLACE_ME'
+  STATUS_IN_PROGRESS: 'REPLACE_ME'
+  STATUS_CLOSED: 'REPLACE_ME'
+  STATUS_DONE: 'REPLACE_ME'
 
 jobs:
   # ============================================
