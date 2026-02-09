@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { mkdirSync as _mkdirSync, existsSync, readdirSync, readFileSync } from 'fs';
+import { mkdirSync as _mkdirSync, existsSync, readdirSync, readFileSync, cpSync, rmSync, writeFileSync } from 'fs';
 import fs from 'fs/promises';
 import path from 'path';
 import { app } from 'electron';
@@ -341,15 +341,6 @@ const getSkillsDir = () => {
 };
 
 /**
- * 获取内置技能目录路径（_builtin 子目录）
- * Get builtin skills directory path (_builtin subdirectory)
- * Skills in this directory are automatically injected for ALL agents and scenarios
- */
-const getBuiltinSkillsDir = () => {
-  return path.join(getSkillsDir(), '_builtin');
-};
-
-/**
  * 初始化内置助手的规则和技能文件到用户目录
  * Initialize builtin assistant rule and skill files to user directory
  */
@@ -404,6 +395,32 @@ const initBuiltinAssistantRules = async (): Promise<void> => {
       console.log(`[AionUi] Skills directory initialized: ${userSkillsDir}`);
     } catch (error) {
       console.warn(`[AionUi] Failed to copy skills directory:`, error);
+    }
+  }
+
+  // Rev 4 migration: flatten _builtin/ to top-level with .aionui-skill.json metadata
+  const legacyBuiltinDir = path.join(userSkillsDir, '_builtin');
+  if (existsSync(legacyBuiltinDir)) {
+    try {
+      const builtinEntries = readdirSync(legacyBuiltinDir, { withFileTypes: true });
+      for (const entry of builtinEntries) {
+        if (!entry.isDirectory()) continue;
+        const sourcePath = path.join(legacyBuiltinDir, entry.name);
+        const targetPath = path.join(userSkillsDir, entry.name);
+        if (!existsSync(targetPath)) {
+          cpSync(sourcePath, targetPath, { recursive: true });
+        }
+        // Write metadata marking as builtin
+        const metadataPath = path.join(targetPath, '.aionui-skill.json');
+        if (!existsSync(metadataPath)) {
+          writeFileSync(metadataPath, JSON.stringify({ managedBy: 'aionui', builtin: true, sourceDir: targetPath }, null, 2), 'utf-8');
+        }
+      }
+      // Remove legacy _builtin/ directory
+      rmSync(legacyBuiltinDir, { recursive: true, force: true });
+      console.log(`[AionUi] Migrated _builtin/ skills to flat storage`);
+    } catch (error) {
+      console.warn(`[AionUi] Failed to migrate _builtin/ skills:`, error);
     }
   }
 
@@ -746,6 +763,6 @@ export const getSystemDir = () => {
  * 获取助手规则目录路径（供其他模块使用）
  * Get assistant rules directory path (for use by other modules)
  */
-export { getAssistantsDir, getSkillsDir, getBuiltinSkillsDir };
+export { getAssistantsDir, getSkillsDir };
 
 export default initStorage;

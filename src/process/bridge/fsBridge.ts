@@ -13,7 +13,7 @@ import http from 'node:http';
 import { app } from 'electron';
 import { ipcBridge } from '../../common';
 import { getSystemDir, getAssistantsDir } from '../initStorage';
-import { detectEngineNativeSkills } from '../task/SkillDistributor';
+import { detectEngineNativeSkills, detectGlobalSkills } from '../task/SkillDistributor';
 import { readDirectoryRecursive } from '../utils';
 
 // ============================================================================
@@ -630,83 +630,71 @@ export function initFsBridge(): void {
     return deleteAssistantResource('skills', new RegExp(`^${assistantId}-skills\\..*\\.md$`));
   });
 
-  // 获取可用 skills 列表 / List available skills from both builtin and user directories
+  // 获取可用 skills 列表 / List available skills from unified flat directory
+  // Rev 4: single directory scan with .aionui-skill.json metadata for builtin classification
   ipcBridge.fs.listAvailableSkills.provider(async () => {
     try {
       const skills: Array<{ name: string; description: string; location: string; isCustom: boolean }> = [];
-
-      // 辅助函数：从目录读取 skills
-      const readSkillsFromDir = async (skillsDir: string, isCustomDir: boolean) => {
-        try {
-          await fs.access(skillsDir);
-          const entries = await fs.readdir(skillsDir, { withFileTypes: true });
-
-          for (const entry of entries) {
-            if (!entry.isDirectory()) continue;
-
-            // 跳过内置 skills 目录（_builtin），这些 skills 自动注入，不需要用户选择
-            // Skip builtin skills directory (_builtin), these are auto-injected, no user selection needed
-            if (entry.name === '_builtin') continue;
-
-            const skillMdPath = path.join(skillsDir, entry.name, 'SKILL.md');
-
-            try {
-              const content = await fs.readFile(skillMdPath, 'utf-8');
-              // 解析 YAML front matter
-              const frontMatterMatch = content.match(/^---\s*\n([\s\S]*?)\n---/);
-              if (frontMatterMatch) {
-                const yaml = frontMatterMatch[1];
-                const nameMatch = yaml.match(/^name:\s*(.+)$/m);
-                const descMatch = yaml.match(/^description:\s*['"]?(.+?)['"]?$/m);
-                if (nameMatch) {
-                  skills.push({
-                    name: nameMatch[1].trim(),
-                    description: descMatch ? descMatch[1].trim() : '',
-                    location: skillMdPath,
-                    isCustom: isCustomDir,
-                  });
-                }
-              }
-            } catch {
-              // Skill directory without SKILL.md, skip
-            }
-          }
-        } catch {
-          // Directory doesn't exist, skip
-        }
-      };
-
-      // 读取内置 skills (isCustom: false)
-      const builtinSkillsDir = await findBuiltinResourceDir('skills');
-      const builtinCountBefore = skills.length;
-      await readSkillsFromDir(builtinSkillsDir, false);
-      const builtinCount = skills.length - builtinCountBefore;
-
-      // 读取用户自定义 skills (isCustom: true)
       const userSkillsDir = getUserSkillsDir();
-      const userCountBefore = skills.length;
-      await readSkillsFromDir(userSkillsDir, true);
-      const userCount = skills.length - userCountBefore;
 
-      // 去重：如果 custom skill 和 builtin skill 同名，只保留 builtin
-      // Deduplicate: if custom and builtin skills have same name, keep only builtin
-      const skillMap = new Map<string, { name: string; description: string; location: string; isCustom: boolean }>();
-      for (const skill of skills) {
-        const existing = skillMap.get(skill.name);
-        // 如果已存在且当前是 builtin，或者不存在，则添加/更新
-        // Add/update if: already exists and current is builtin, or doesn't exist yet
-        if (!existing || !skill.isCustom) {
-          skillMap.set(skill.name, skill);
+      try {
+        await fs.access(userSkillsDir);
+        const entries = await fs.readdir(userSkillsDir, { withFileTypes: true });
+
+        for (const entry of entries) {
+          if (!entry.isDirectory()) continue;
+          if (entry.name === '_builtin') continue; // Skip legacy dir
+          if (entry.name.startsWith('.')) continue; // Skip hidden/metadata
+
+          const skillDir = path.join(userSkillsDir, entry.name);
+          const skillMdPath = path.join(skillDir, 'SKILL.md');
+
+          try {
+            const content = await fs.readFile(skillMdPath, 'utf-8');
+            // 解析 YAML front matter
+            const frontMatterMatch = content.match(/^---\s*\n([\s\S]*?)\n---/);
+            if (frontMatterMatch) {
+              const yaml = frontMatterMatch[1];
+              const nameMatch = yaml.match(/^name:\s*(.+)$/m);
+              const descMatch = yaml.match(/^description:\s*['"]?(.+?)['"]?$/m);
+              if (nameMatch) {
+                // Check metadata for builtin classification
+                let isBuiltin = false;
+                const metadataPath = path.join(skillDir, '.aionui-skill.json');
+                try {
+                  const metaRaw = await fs.readFile(metadataPath, 'utf-8');
+                  const meta = JSON.parse(metaRaw);
+                  if (meta?.managedBy === 'aionui' && meta.builtin === true) {
+                    isBuiltin = true;
+                  }
+                } catch {
+                  // No metadata = optional/custom skill
+                }
+
+                skills.push({
+                  name: nameMatch[1].trim(),
+                  description: descMatch ? descMatch[1].trim() : '',
+                  location: skillMdPath,
+                  isCustom: !isBuiltin,
+                });
+              }
+            }
+          } catch {
+            // Skill directory without SKILL.md, skip
+          }
         }
+      } catch {
+        // Directory doesn't exist, skip
       }
-      const deduplicatedSkills = Array.from(skillMap.values());
 
-      console.log(`[fsBridge] Listed ${deduplicatedSkills.length} available skills (${skills.length} before deduplication):`);
-      console.log(`  - Builtin skills (${builtinCount}): ${builtinSkillsDir}`);
-      console.log(`  - User skills (${userCount}): ${userSkillsDir}`);
-      console.log(`  - Skills breakdown:`, deduplicatedSkills.map((s) => `${s.name} (${s.isCustom ? 'custom' : 'builtin'})`).join(', '));
+      const builtinCount = skills.filter((s) => !s.isCustom).length;
+      const customCount = skills.filter((s) => s.isCustom).length;
 
-      return deduplicatedSkills;
+      console.log(`[fsBridge] Listed ${skills.length} available skills:`);
+      console.log(`  - Builtin: ${builtinCount}, Custom: ${customCount}`);
+      console.log(`  - Skills: ${skills.map((s) => `${s.name} (${s.isCustom ? 'custom' : 'builtin'})`).join(', ')}`);
+
+      return skills;
     } catch (error) {
       console.error('[fsBridge] Failed to list available skills:', error);
       return [];
@@ -793,28 +781,24 @@ export function initFsBridge(): void {
       const userSkillsDir = getUserSkillsDir();
       const targetDir = path.join(userSkillsDir, skillName);
 
-      // 检查是否已存在同名 skill（同时检查内置和用户目录）/ Check if skill already exists in both builtin and user directories
-      const builtinSkillsDir = await findBuiltinResourceDir('skills');
-      const builtinTargetDir = path.join(builtinSkillsDir, skillName);
-
+      // Rev 4: check unified flat directory for duplicate (builtin or user)
       try {
         await fs.access(targetDir);
+        // Check if it's a builtin skill via metadata
+        let isBuiltin = false;
+        try {
+          const metaRaw = await fs.readFile(path.join(targetDir, '.aionui-skill.json'), 'utf-8');
+          const meta = JSON.parse(metaRaw);
+          isBuiltin = meta?.managedBy === 'aionui' && meta.builtin === true;
+        } catch {
+          // No metadata
+        }
         return {
           success: false,
-          msg: `Skill "${skillName}" already exists in user skills`,
+          msg: `Skill "${skillName}" already exists in ${isBuiltin ? 'builtin' : 'user'} skills`,
         };
       } catch {
-        // User skill doesn't exist
-      }
-
-      try {
-        await fs.access(builtinTargetDir);
-        return {
-          success: false,
-          msg: `Skill "${skillName}" already exists in builtin skills`,
-        };
-      } catch {
-        // Builtin skill doesn't exist, proceed with copy
+        // Skill doesn't exist, proceed with import
       }
 
       // 复制整个目录 / Copy entire directory
@@ -954,6 +938,19 @@ export function initFsBridge(): void {
   ipcBridge.fs.detectEngineNativeSkills.provider(({ workspace }) => {
     try {
       const skills = detectEngineNativeSkills(workspace);
+      return Promise.resolve({ success: true, data: skills });
+    } catch (error) {
+      return Promise.resolve({
+        success: false,
+        msg: error instanceof Error ? error.message : 'Detection failed',
+      });
+    }
+  });
+
+  // 检测全局 skills（~/.claude/skills/, ~/.gemini/skills/）/ Detect global engine skills
+  ipcBridge.fs.detectGlobalSkills.provider(() => {
+    try {
+      const skills = detectGlobalSkills(os.homedir());
       return Promise.resolve({ success: true, data: skills });
     } catch (error) {
       return Promise.resolve({

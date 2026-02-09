@@ -588,6 +588,8 @@
     "noEngineNativeSkills": "エンジンネイティブスキルは検出されませんでした。エージェントが作成したスキルがここに表示されます。",
     "importToAionUi": "インポート",
     "noSkillMd": "SKILL.md がありません — インポートできません",
+    "globalSkills": "グローバルスキル",
+    "globalSkillsDescription": "ホームディレクトリレベルにインストールされたスキル（~/.claude/skills/、~/.gemini/skills/）。読み取り専用。",
     "skillImported": "スキル「{{name}}」のインポートに成功しました",
     "skillImportFailed": "スキルのインポートに失敗しました",
     "tools": "ツール",

@@ -559,6 +559,8 @@
     "noEngineNativeSkills": "未偵測到引擎原生技能。代理建立的技能將顯示在此處。",
     "importToAionUi": "匯入",
     "noSkillMd": "缺少 SKILL.md — 無法匯入",
+    "globalSkills": "全域技能",
+    "globalSkillsDescription": "安裝在主目錄層級的技能（~/.claude/skills/、~/.gemini/skills/）。唯讀。",
     "skillImported": "技能「{{name}}」匯入成功",
     "skillImportFailed": "匯入技能失敗",
     "tools": "工具",

@@ -121,7 +121,9 @@ export const fs = {
   // 检测常见的 skills 路径 / Detect common skills paths
   detectCommonSkillPaths: bridge.buildProvider<IBridgeResponse<Array<{ name: string; path: string; exists: boolean }>>, void>('detect-common-skill-paths'),
   // 检测引擎目录中非 AionUi 管理的 skills / Detect engine-native skills not managed by AionUi
-  detectEngineNativeSkills: bridge.buildProvider<IBridgeResponse<Array<{ name: string; engine: 'claude' | 'codex'; path: string; hasSkillMd: boolean }>>, { workspace: string }>('detect-engine-native-skills'),
+  detectEngineNativeSkills: bridge.buildProvider<IBridgeResponse<Array<{ name: string; engine: 'claude' | 'codex' | 'gemini'; path: string; hasSkillMd: boolean }>>, { workspace: string }>('detect-engine-native-skills'),
+  // 检测全局 skills（~/.claude/skills/, ~/.gemini/skills/）/ Detect global engine skills at home directory
+  detectGlobalSkills: bridge.buildProvider<IBridgeResponse<Array<{ name: string; engine: 'claude' | 'gemini'; path: string; hasSkillMd: boolean }>>, void>('detect-global-skills'),
 };
 
 export const fileWatch = {

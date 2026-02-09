@@ -19,7 +19,14 @@ interface SkillInfo {
 
 interface EngineNativeSkill {
   name: string;
-  engine: 'claude' | 'codex';
+  engine: 'claude' | 'codex' | 'gemini';
+  path: string;
+  hasSkillMd: boolean;
+}
+
+interface GlobalSkill {
+  name: string;
+  engine: 'claude' | 'gemini';
   path: string;
   hasSkillMd: boolean;
 }
@@ -38,6 +45,7 @@ const SkillsManagement: React.FC = () => {
   const [commonPaths, setCommonPaths] = useState<Array<{ name: string; path: string; exists: boolean }>>([]);
   const [loading, setLoading] = useState(true);
   const [engineNativeSkills, setEngineNativeSkills] = useState<EngineNativeSkill[]>([]);
+  const [globalSkills, setGlobalSkills] = useState<GlobalSkill[]>([]);
   const [importingSkill, setImportingSkill] = useState<string | null>(null);
 
   const loadSkills = useCallback(async () => {
@@ -65,10 +73,23 @@ const SkillsManagement: React.FC = () => {
     }
   }, []);
 
+  // Load global skills from home directory engine paths
+  const loadGlobalSkills = useCallback(async () => {
+    try {
+      const result = await ipcBridge.fs.detectGlobalSkills.invoke();
+      if (result.success && result.data) {
+        setGlobalSkills(result.data);
+      }
+    } catch (error) {
+      console.error('Failed to detect global skills:', error);
+    }
+  }, []);
+
   useEffect(() => {
     void loadSkills();
     void loadEngineNativeSkills();
-  }, [loadSkills, loadEngineNativeSkills]);
+    void loadGlobalSkills();
+  }, [loadSkills, loadEngineNativeSkills, loadGlobalSkills]);
 
   // Detect common skill paths when import modal opens
   useEffect(() => {
@@ -246,9 +267,9 @@ const SkillsManagement: React.FC = () => {
                         style={{
                           fontSize: '9px',
                           fontWeight: 'bold',
-                          backgroundColor: skill.engine === 'claude' ? '#EDE9FE' : '#DBEAFE',
-                          color: skill.engine === 'claude' ? '#7C3AED' : '#2563EB',
-                          borderColor: skill.engine === 'claude' ? '#C4B5FD' : '#93C5FD',
+                          backgroundColor: skill.engine === 'claude' ? '#EDE9FE' : skill.engine === 'gemini' ? '#DCFCE7' : '#DBEAFE',
+                          color: skill.engine === 'claude' ? '#7C3AED' : skill.engine === 'gemini' ? '#16A34A' : '#2563EB',
+                          borderColor: skill.engine === 'claude' ? '#C4B5FD' : skill.engine === 'gemini' ? '#86EFAC' : '#93C5FD',
                         }}
                       >
                         {skill.engine}
@@ -267,6 +288,39 @@ const SkillsManagement: React.FC = () => {
           )}
         </Collapse.Item>
       </Collapse>
+
+      {/* Global Skills Section (home directory) */}
+      {globalSkills.length > 0 && (
+        <Collapse defaultActiveKey={['global-skills']}>
+          <Collapse.Item header={<span className='text-13px font-medium'>{t('settings.globalSkills', { defaultValue: 'Global Skills' })}</span>} name='global-skills' extra={<span className='text-12px text-t-secondary'>{globalSkills.length}</span>}>
+            <div className='text-12px color-#86909C mb-8px'>{t('settings.globalSkillsDescription', { defaultValue: 'Skills installed at home directory level (~/.claude/skills/, ~/.gemini/skills/). Read-only.' })}</div>
+            <div className='space-y-4px'>
+              {globalSkills.map((skill) => (
+                <div key={`${skill.engine}-${skill.name}`} className='flex items-center gap-8px p-8px hover:bg-fill-1 rounded-4px'>
+                  <div className='flex-1 min-w-0'>
+                    <div className='flex items-center gap-4px'>
+                      <span className='text-13px font-medium text-t-primary'>{skill.name}</span>
+                      <span
+                        className='text-10px px-4px py-1px rounded border uppercase'
+                        style={{
+                          fontSize: '9px',
+                          fontWeight: 'bold',
+                          backgroundColor: skill.engine === 'claude' ? '#EDE9FE' : '#DCFCE7',
+                          color: skill.engine === 'claude' ? '#7C3AED' : '#16A34A',
+                          borderColor: skill.engine === 'claude' ? '#C4B5FD' : '#86EFAC',
+                        }}
+                      >
+                        {skill.engine}
+                      </span>
+                    </div>
+                    <div className='text-11px text-t-tertiary mt-2px truncate'>{skill.path}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Collapse.Item>
+        </Collapse>
+      )}
 
       {/* Import Skills Modal */}
       <Modal

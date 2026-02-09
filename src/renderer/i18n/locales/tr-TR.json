@@ -788,6 +788,8 @@
     "noEngineNativeSkills": "Motor yerel yeteneği algılanmadı. Ajanlar tarafından oluşturulan yetenekler burada görünecektir.",
     "importToAionUi": "İçe Aktar",
     "noSkillMd": "SKILL.md eksik — içe aktarılamaz",
+    "globalSkills": "Global Yetenekler",
+    "globalSkillsDescription": "Ana dizin düzeyinde yüklü yetenekler (~/.claude/skills/, ~/.gemini/skills/). Salt okunur.",
     "skillImported": "\"{{name}}\" yeteneği başarıyla içe aktarıldı",
     "skillImportFailed": "Yetenek içe aktarılamadı"
   },

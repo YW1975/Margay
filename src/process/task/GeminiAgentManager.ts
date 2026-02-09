@@ -11,7 +11,7 @@ import { transformMessage } from '@/common/chatLib';
 import type { IResponseMessage } from '@/common/ipcBridge';
 import type { IMcpServer, TProviderWithModel } from '@/common/storage';
 import { ProcessConfig, getSkillsDir } from '@/process/initStorage';
-import { computeGeminiDisabledSkills } from './SkillDistributor';
+import { computeGeminiDisabledSkills, distributeForGemini } from './SkillDistributor';
 import { uuid } from '@/common/utils';
 import { getOauthInfoWithCache } from '@office-ai/aioncli-core';
 import { GeminiApprovalStore } from '../../agent/gemini/GeminiApprovalStore';
@@ -136,6 +136,10 @@ export class GeminiAgentManager extends BaseAgentManager<
           // 获取账号失败时不设置 projectId，让系统使用默认值
           // If account retrieval fails, don't set projectId, let system use default
         }
+
+        // Distribute AionUi skills to Gemini workspace discovery dir (bootstrap-only)
+        // 在 bootstrap 时将 AionUi skills 分发到 Gemini 工作空间发现目录
+        distributeForGemini(this.workspace, this.enabledSkills);
 
         // Convert enabledSkills (preset whitelist) to disabledSkills (aioncli-core native blacklist)
         // 将 enabledSkills（预设白名单）转换为 disabledSkills（aioncli-core 原生黑名单）
