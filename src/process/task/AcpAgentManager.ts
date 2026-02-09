@@ -331,9 +331,13 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
    */
   async stop() {
     if (this.agent) {
-      return this.agent.stop();
+      await this.agent.stop();
     }
-    return Promise.resolve();
+    // Clear cached bootstrap so next sendMessage() re-initializes
+    this.bootstrap = undefined;
+    // Clear session ID to force new session on next sendMessage()
+    delete this.options.acpSessionId;
+    delete this.options.acpSessionUpdatedAt;
   }
 
   /**

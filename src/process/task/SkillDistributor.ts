@@ -374,6 +374,66 @@ export function distributeForCodex(workspace: string, enabledSkills?: string[]):
 /** Exported for testing. */
 export { shouldDistributeSkill, hasProvenanceMarker, PROVENANCE_MARKER };
 
+// --- Engine-native skill detection ---
+
+export type EngineNativeSkill = {
+  name: string;
+  engine: 'claude' | 'codex';
+  path: string;
+  hasSkillMd: boolean;
+};
+
+/**
+ * Detect skills in engine discovery directories that are NOT managed by AionUi.
+ * These are "engine-native" skills — created by the agent during a conversation
+ * or manually placed by the user in the engine directory.
+ *
+ * Only scans Claude (.claude/skills/) and Codex (.agents/skills/) workspace directories.
+ * Gemini is excluded because its skillsDir IS the AionUi skills directory.
+ */
+export function detectEngineNativeSkills(workspace: string): EngineNativeSkill[] {
+  const results: EngineNativeSkill[] = [];
+  const aionuiSkillsDir = getSkillsDir();
+
+  const engineDirs: Array<{ dir: string; engine: 'claude' | 'codex' }> = [
+    { dir: path.join(workspace, '.claude', 'skills'), engine: 'claude' },
+    { dir: path.join(workspace, '.agents', 'skills'), engine: 'codex' },
+  ];
+
+  for (const { dir, engine } of engineDirs) {
+    if (!existsSync(dir)) continue;
+
+    let entries;
+    try {
+      entries = readdirSync(dir, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+
+    const manifest = readManifest(dir);
+
+    for (const entry of entries) {
+      if (entry.name === MANIFEST_FILENAME) continue;
+      if (entry.name.startsWith('.')) continue;
+
+      const entryPath = path.join(dir, entry.name);
+
+      // Skip AionUi-managed entries (symlinks or copies with provenance marker)
+      if (isAionUiManagedSymlink(entryPath, aionuiSkillsDir)) continue;
+      if (isAionUiManagedCopy(entry.name, manifest, entryPath)) continue;
+
+      results.push({
+        name: entry.name,
+        engine,
+        path: entryPath,
+        hasSkillMd: existsSync(path.join(entryPath, 'SKILL.md')),
+      });
+    }
+  }
+
+  return results;
+}
+
 export function computeGeminiDisabledSkills(enabledSkills?: string[]): string[] | undefined {
   // No filtering: all skills available
   if (!enabledSkills || enabledSkills.length === 0) {

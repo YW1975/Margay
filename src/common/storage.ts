@@ -46,6 +46,8 @@ export interface IConfigStorageRefer {
     };
   };
   'acp.customAgents'?: AcpBackendConfig[];
+  // User-disabled backends — hidden from UI agent selection, NOT skipped from installation detection
+  'acp.disabledBackends'?: string[];
   'model.config': IProvider[];
   'mcp.config': IMcpServer[];
   'mcp.agentInstallStatus': Record<string, string[]>;

@@ -120,6 +120,8 @@ export const fs = {
   scanForSkills: bridge.buildProvider<IBridgeResponse<Array<{ name: string; description: string; path: string }>>, { folderPath: string }>('scan-for-skills'),
   // 检测常见的 skills 路径 / Detect common skills paths
   detectCommonSkillPaths: bridge.buildProvider<IBridgeResponse<Array<{ name: string; path: string }>>, void>('detect-common-skill-paths'),
+  // 检测引擎目录中非 AionUi 管理的 skills / Detect engine-native skills not managed by AionUi
+  detectEngineNativeSkills: bridge.buildProvider<IBridgeResponse<Array<{ name: string; engine: 'claude' | 'codex'; path: string; hasSkillMd: boolean }>>, { workspace: string }>('detect-engine-native-skills'),
 };
 
 export const fileWatch = {
@@ -181,7 +183,23 @@ export const acpConversation = {
   >('acp.get-available-agents'),
   checkEnv: bridge.buildProvider<{ env: Record<string, string> }, void>('acp.check.env'),
   refreshCustomAgents: bridge.buildProvider<IBridgeResponse, void>('acp.refresh-custom-agents'),
-  // clearAllCache: bridge.buildProvider<IBridgeResponse<{ details?: any }>, void>('acp.clear.all.cache'),
+  // Unfiltered agent list for Settings page (includes disabled backends)
+  getAllDetectedAgents: bridge.buildProvider<
+    IBridgeResponse<
+      Array<{
+        backend: AcpBackend;
+        name: string;
+        cliPath?: string;
+        customAgentId?: string;
+        isPreset?: boolean;
+        context?: string;
+        avatar?: string;
+        presetAgentType?: PresetAgentType;
+      }>
+    >,
+    void
+  >('acp.get-all-detected-agents'),
+  setDisabledBackends: bridge.buildProvider<IBridgeResponse, { backends: string[] }>('acp.set-disabled-backends'),
 };
 
 // MCP 服务相关接口

@@ -222,6 +222,11 @@ export class AcpConnection {
 
   // Track if initial setup is complete (to distinguish startup errors from runtime exits)
   private isSetupComplete = false;
+  // Flag to distinguish intentional disconnect (user stop) from unexpected process exit
+  private isIntentionalDisconnect = false;
+  // Generation counter to prevent stale child exit handlers from corrupting new connections.
+  // Incremented on each connect(); exit handlers capture the generation at setup time.
+  private connectionGeneration = 0;
 
   // Ring buffer for recent stderr lines (max 10 lines, used to provide context in error messages)
   private static readonly STDERR_BUFFER_MAX_LINES = 10;
@@ -246,8 +251,10 @@ export class AcpConnection {
 
   async connect(backend: AcpBackend, cliPath?: string, workingDir: string = process.cwd(), acpArgs?: string[], customEnv?: Record<string, string>): Promise<void> {
     if (this.child) {
-      this.disconnect();
+      await this.disconnect();
     }
+    this.isIntentionalDisconnect = false;
+    this.connectionGeneration++;
 
     this.backend = backend;
     if (workingDir) {
@@ -316,10 +323,13 @@ export class AcpConnection {
 
   private async setupChildProcessHandlers(backend: string): Promise<void> {
     let spawnError: Error | null = null;
+    // Capture generation at setup time so stale child exits are ignored
+    const generation = this.connectionGeneration;
 
     // Buffer stderr for error context (also keep console.error for dev debugging)
     this.stderrBuffer = [];
     this.child.stderr?.on('data', (data) => {
+      if (this.connectionGeneration !== generation) return; // stale child
       const text = data.toString();
       console.error(`[ACP ${backend} STDERR]:`, text);
       const lines = text.split('\n').filter((l: string) => l.trim());
@@ -331,12 +341,21 @@ export class AcpConnection {
     });
 
     this.child.on('error', (error) => {
+      if (this.connectionGeneration !== generation) return; // stale child
       spawnError = error;
     });
 
     // Exit handler for both startup and runtime phases
     this.child.on('exit', (code, signal) => {
       console.error(`[ACP ${backend}] Process exited with code: ${code}, signal: ${signal}`);
+
+      // Ignore exit events from a previous connection generation
+      if (this.connectionGeneration !== generation) return;
+
+      if (this.isIntentionalDisconnect) {
+        // Intentional disconnect (user stop) — skip error handling
+        return;
+      }
 
       if (!this.isSetupComplete) {
         // Startup phase - include stderr context in error
@@ -373,6 +392,7 @@ export class AcpConnection {
     // Handle messages from ACP server
     let buffer = '';
     this.child.stdout?.on('data', (data) => {
+      if (this.connectionGeneration !== generation) return; // stale child
       const dataStr = data.toString();
       buffer += dataStr;
       const lines = buffer.split('\n');
@@ -876,30 +896,59 @@ export class AcpConnection {
     });
   }
 
-  disconnect(): void {
-    if (this.child) {
-      const pid = this.child.pid;
-      if (pid) {
-        // Kill entire process tree to prevent orphaned subprocesses
-        // (e.g., npm run dev spawned by CLI agents)
+  disconnect(): Promise<void> {
+    this.isIntentionalDisconnect = true;
+
+    if (!this.child) {
+      this.resetConnectionState();
+      return Promise.resolve();
+    }
+
+    const pid = this.child.pid;
+    const child = this.child;
+    this.child = null; // Prevent re-entrant disconnect
+
+    if (pid) {
+      // Kill entire process tree to prevent orphaned subprocesses
+      // (e.g., npm run dev spawned by CLI agents)
+      // Wait for close event (all stdio closed) or 2s timeout
+      return new Promise<void>((resolve) => {
+        let settled = false;
+        const done = () => {
+          if (!settled) {
+            settled = true;
+            clearTimeout(fallback);
+            this.resetConnectionState();
+            resolve();
+          }
+        };
+
+        const fallback = setTimeout(done, 2000);
+        child.on('close', done);
+
         treeKill(pid, 'SIGTERM', (err) => {
           if (err) {
             console.error(`[ACP] Failed to kill process tree (pid: ${pid}):`, err.message);
+            done(); // Resolve on treeKill error (process may already be gone)
           }
         });
-      } else {
-        this.child.kill();
-      }
-      this.child = null;
+      });
     }
 
-    // Reset state
+    child.kill();
+    this.resetConnectionState();
+    return Promise.resolve();
+  }
+
+  /** Reset all connection state to initial values */
+  private resetConnectionState(): void {
     this.pendingRequests.clear();
     this.sessionId = null;
     this.isInitialized = false;
     this.isSetupComplete = false;
     this.backend = null;
     this.initializeResponse = null;
+    this.stderrBuffer = [];
   }
 
   get isConnected(): boolean {

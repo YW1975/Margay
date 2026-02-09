@@ -5,6 +5,7 @@
  */
 
 import { acpDetector } from '@/agent/acp/AcpDetector';
+import { ProcessConfig } from '@/process/initStorage';
 import { ipcBridge } from '../../common';
 
 export function initAcpConversationBridge(): void {
@@ -31,8 +32,24 @@ export function initAcpConversationBridge(): void {
     return Promise.resolve({ success: false, msg: `${backend} CLI not found. Please install it and ensure it's accessible.` });
   });
 
-  // 新的ACP检测接口 - 基于全局标记位
-  ipcBridge.acpConversation.getAvailableAgents.provider(() => {
+  // Available agents for UI selection — filters out user-disabled backends
+  // Disabled backends are hidden from selection, NOT skipped from detection
+  ipcBridge.acpConversation.getAvailableAgents.provider(async () => {
+    try {
+      const agents = acpDetector.getDetectedAgents();
+      const disabledBackends = (await ProcessConfig.get('acp.disabledBackends')) || [];
+      const filtered = disabledBackends.length > 0 ? agents.filter((agent) => !disabledBackends.includes(agent.backend)) : agents;
+      return { success: true, data: filtered };
+    } catch (error) {
+      return {
+        success: false,
+        msg: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  });
+
+  // Unfiltered agent list for Settings page (includes disabled backends)
+  ipcBridge.acpConversation.getAllDetectedAgents.provider(() => {
     try {
       const agents = acpDetector.getDetectedAgents();
       return Promise.resolve({ success: true, data: agents });
@@ -41,6 +58,19 @@ export function initAcpConversationBridge(): void {
         success: false,
         msg: error instanceof Error ? error.message : 'Unknown error',
       });
+    }
+  });
+
+  // Save user-disabled backends list
+  ipcBridge.acpConversation.setDisabledBackends.provider(async ({ backends }) => {
+    try {
+      await ProcessConfig.set('acp.disabledBackends', backends);
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        msg: error instanceof Error ? error.message : 'Unknown error',
+      };
     }
   });
 

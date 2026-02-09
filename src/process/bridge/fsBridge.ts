@@ -13,6 +13,7 @@ import http from 'node:http';
 import { app } from 'electron';
 import { ipcBridge } from '../../common';
 import { getSystemDir, getAssistantsDir } from '../initStorage';
+import { detectEngineNativeSkills } from '../task/SkillDistributor';
 import { readDirectoryRecursive } from '../utils';
 
 // ============================================================================
@@ -943,6 +944,19 @@ export function initFsBridge(): void {
         success: false,
         msg: 'Failed to detect common paths',
       };
+    }
+  });
+
+  // 检测引擎目录中非 AionUi 管理的 skills / Detect engine-native skills not managed by AionUi
+  ipcBridge.fs.detectEngineNativeSkills.provider(({ workspace }) => {
+    try {
+      const skills = detectEngineNativeSkills(workspace);
+      return Promise.resolve({ success: true, data: skills });
+    } catch (error) {
+      return Promise.resolve({
+        success: false,
+        msg: error instanceof Error ? error.message : 'Detection failed',
+      });
     }
   });
 }

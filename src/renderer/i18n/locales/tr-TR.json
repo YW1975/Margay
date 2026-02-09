@@ -504,6 +504,7 @@
     "lightMode": "Açık",
     "darkMode": "Koyu",
     "agent": "Ajan",
+    "skills": "Yetenekler",
     "tools": "Araçlar",
     "webui": "Web Arayüzü",
     "channels": "Kanallar",
@@ -781,7 +782,13 @@
     "allSkillsExist": "Bulunan tüm yetenekler zaten mevcut",
     "noSkillsFound": "Seçilen yolda geçerli yetenek bulunamadı",
     "skillScanFailed": "Yetenekler taranamadı",
-    "quickScan": "Ortak Yolları Hızlı Tara"
+    "quickScan": "Ortak Yolları Hızlı Tara",
+    "engineNativeSkills": "Algılanan Yetenekler",
+    "engineNativeDescription": "Motorların dizinlerinde ajanlar tarafından oluşturulan yetenekler, AionUi tarafından yönetilmez.",
+    "importToAionUi": "İçe Aktar",
+    "noSkillMd": "SKILL.md eksik — içe aktarılamaz",
+    "skillImported": "\"{{name}}\" yeteneği başarıyla içe aktarıldı",
+    "skillImportFailed": "Yetenek içe aktarılamadı"
   },
 
   "messages": {

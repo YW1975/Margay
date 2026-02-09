@@ -235,8 +235,8 @@ export class AcpAgent {
     }
   }
 
-  stop(): Promise<void> {
-    this.connection.disconnect();
+  async stop(): Promise<void> {
+    await this.connection.disconnect();
     this.emitStatusMessage('disconnected');
     // Clear session-scoped caches when session ends
     this.approvalStore.clear();
@@ -248,7 +248,6 @@ export class AcpAgent {
       msg_id: uuid(),
       data: null,
     });
-    return Promise.resolve();
   }
 
   // 发送消息到ACP服务器

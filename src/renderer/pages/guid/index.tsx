@@ -574,6 +574,19 @@ const Guid: React.FC = () => {
     };
   }, [availableAgents]);
 
+  // Validate selectedAgentKey against availableAgents
+  // Ensures selection is always a valid, available agent (e.g., when a backend is disabled)
+  useEffect(() => {
+    if (!availableAgents || availableAgents.length === 0) return;
+    const isValid = availableAgents.some((agent) => getAgentKey(agent) === selectedAgentKey);
+    if (!isValid) {
+      // Current selection is not available, fall back to first non-custom agent
+      // Use setSelectedAgentKey (not _setSelectedAgentKey) to also persist to ConfigStorage
+      const fallback = availableAgents.find((a) => a.backend !== 'custom') || availableAgents[0];
+      setSelectedAgentKey(getAgentKey(fallback));
+    }
+  }, [availableAgents, selectedAgentKey, setSelectedAgentKey]);
+
   useEffect(() => {
     let isActive = true;
     ConfigStorage.get('acp.customAgents')

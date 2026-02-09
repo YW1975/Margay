@@ -4,11 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { ipcBridge } from '@/common';
-import type { TChatConversation } from '@/common/storage';
-import { uuid } from '@/common/utils';
 import { iconColors } from '@/renderer/theme/colors';
-import { emitter } from '@/renderer/utils/emitter';
 import { Dropdown, Menu, Tooltip } from '@arco-design/web-react';
 import { Close, Plus } from '@icon-park/react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -31,7 +27,7 @@ interface TabFadeState {
  * Displays all open conversation tabs, supports switching, closing, and creating new conversations
  */
 const ConversationTabs: React.FC = () => {
-  const { openTabs, activeTabId, switchTab, closeTab, closeAllTabs, closeTabsToLeft, closeTabsToRight, closeOtherTabs, openTab } = useConversationTabs();
+  const { openTabs, activeTabId, switchTab, closeTab, closeAllTabs, closeTabsToLeft, closeTabsToRight, closeOtherTabs } = useConversationTabs();
   const navigate = useNavigate();
   const { t } = useTranslation();
   const tabsContainerRef = useRef<HTMLDivElement>(null);
@@ -107,56 +103,13 @@ const ConversationTabs: React.FC = () => {
     [closeTab, openTabs.length, activeTabId, navigate]
   );
 
-  // 新建会话 - 在当前工作空间分组下创建新会话
+  // 新建会话 - 导航到 Guid 页面让用户选择 agent 类型
+  // Navigate to Guid page so user can pick agent type for new conversation
   const handleNewConversation = useCallback(() => {
     const currentTab = openTabs.find((tab) => tab.id === activeTabId);
-    if (!currentTab || !currentTab.workspace) {
-      // 没有活动tab或没有workspace，跳转到欢迎页
-      void navigate('/guid');
-      return;
-    }
-
-    // 从数据库获取当前会话的完整信息
-    void ipcBridge.database.getUserConversations
-      .invoke({ page: 0, pageSize: 10000 })
-      .then((conversations) => {
-        const currentConversation = conversations?.find((conv: TChatConversation) => conv.id === currentTab.id);
-        if (!currentConversation) {
-          void navigate('/guid');
-          return;
-        }
-
-        // 创建新会话，复制当前会话的配置和标题
-        const newId = uuid();
-        const newConversation = {
-          ...currentConversation,
-          id: newId,
-          name: t('conversation.welcome.newConversation'), // Default title for new session
-          createTime: Date.now(),
-          modifyTime: Date.now(),
-        };
-
-        void ipcBridge.conversation.createWithConversation
-          .invoke({
-            conversation: newConversation,
-          })
-          .then(() => {
-            // 将新会话添加到 tabs
-            openTab(newConversation);
-            // 导航到新会话
-            void navigate(`/conversation/${newId}`);
-            // 刷新历史列表
-            emitter.emit('chat.history.refresh');
-          })
-          .catch((error) => {
-            console.error('Failed to create conversation:', error);
-          });
-      })
-      .catch((error) => {
-        console.error('Failed to load conversations:', error);
-        void navigate('/guid');
-      });
-  }, [navigate, openTabs, activeTabId, openTab]);
+    // Pass workspace from current tab so Guid pre-fills directory
+    void navigate('/guid', { state: { workspace: currentTab?.workspace } });
+  }, [navigate, openTabs, activeTabId]);
 
   // 生成右键菜单内容
   const getContextMenu = useCallback(
