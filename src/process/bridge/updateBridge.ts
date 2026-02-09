@@ -30,8 +30,8 @@ type GitHubReleaseApi = {
   assets?: GitHubReleaseApiAsset[];
 };
 
-const DEFAULT_REPO = 'iOfficeAI/AionUi';
-const DEFAULT_USER_AGENT = 'AionUi';
+const DEFAULT_REPO = 'YW1975/Margay';
+const DEFAULT_USER_AGENT = 'Margay';
 const ALLOWED_ASSET_EXTS = ['.exe', '.msi', '.dmg', '.zip', '.AppImage', '.deb', '.rpm'];
 const ALLOWED_DOWNLOAD_HOSTS = new Set<string>(['github.com', 'objects.githubusercontent.com', 'github-releases.githubusercontent.com', 'release-assets.githubusercontent.com']);
 const MAX_REDIRECTS = 8;
@@ -106,7 +106,7 @@ const pickRecommendedAsset = (assets: GitHubReleaseAsset[]): GitHubReleaseAsset 
 };
 
 const resolveRepo = (requestRepo?: string): string => {
-  const envRepo = process.env.AIONUI_GITHUB_REPO?.trim();
+  const envRepo = (process.env.MARGAY_GITHUB_REPO || process.env.AIONUI_GITHUB_REPO)?.trim();
   const repo = (requestRepo || envRepo || DEFAULT_REPO).trim();
   return repo || DEFAULT_REPO;
 };
@@ -226,7 +226,7 @@ const sanitizeFileName = (name: string): string => {
   // Keep only base name and trim weird whitespace.
   const base = path.basename(name).trim();
   // Avoid empty names.
-  return base || `AionUi-update-${Date.now()}`;
+  return base || `Margay-update-${Date.now()}`;
 };
 
 const ensureUniquePath = (target: string): string => {

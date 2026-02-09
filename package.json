@@ -39,7 +39,7 @@
   "keywords": [],
   "author": {
     "name": "Margay",
-    "email": "service@aionui.com"
+    "email": "margay@example.com"
   },
   "license": "Apache-2.0",
   "devDependencies": {

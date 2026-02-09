@@ -157,3 +157,14 @@ my-video
 
 # Agent Kit
 .agent
+
+# Dual-agent collaboration state
+.dual-agent/
+
+# Scattered screenshots and temp docs at project root (root only)
+/*.png
+/*.jpg
+/*.gif
+
+# Codex config
+.codex/

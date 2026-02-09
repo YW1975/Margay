@@ -1,10 +1,9 @@
 name: '📋 Project Automation'
 
+# Disabled: requires org-level GitHub Project with matching GraphQL IDs.
+# Re-enable after creating a Margay project board and updating PROJECT_ID/STATUS_FIELD_ID below.
 on:
-  issues:
-    types: [opened, closed, reopened]
-  pull_request:
-    types: [opened, closed, reopened]
+  workflow_dispatch: {}
 
 # Minimal permissions at workflow level, jobs use PROJECT_TOKEN secret
 permissions:
@@ -12,7 +11,7 @@ permissions:
 
 env:
   PROJECT_NUMBER: 5
-  ORG_NAME: iOfficeAI
+  ORG_NAME: YW1975
   PROJECT_ID: PVT_kwDOCKhK-M4BN1Ah
   STATUS_FIELD_ID: PVTSSF_lADOCKhK-M4BN1Ahzg8tcak
   # Status option IDs
@@ -48,7 +47,7 @@ jobs:
         id: add
         uses: actions/add-to-project@v1.0.2
         with:
-          project-url: https://github.com/orgs/iOfficeAI/projects/5
+          project-url: https://github.com/YW1975/Margay/projects
           github-token: ${{ steps.mint_token.outputs.token }}
 
   set-issue-initial-status:
@@ -130,7 +129,7 @@ jobs:
               }
             `;
 
-            const result = await github.graphql(query, { org: 'iOfficeAI', number: 5 });
+            const result = await github.graphql(query, { org: 'YW1975', number: 5 });
             const item = result.organization.projectV2.items.nodes.find(i => i.content?.id === contentId);
 
             if (!item) {
@@ -196,7 +195,7 @@ jobs:
               }
             `;
 
-            const result = await github.graphql(query, { org: 'iOfficeAI', number: 5 });
+            const result = await github.graphql(query, { org: 'YW1975', number: 5 });
             const item = result.organization.projectV2.items.nodes.find(i => i.content?.id === contentId);
 
             if (!item) {
@@ -322,7 +321,7 @@ jobs:
               }
             `;
 
-            const result = await github.graphql(query, { org: 'iOfficeAI', number: 5 });
+            const result = await github.graphql(query, { org: 'YW1975', number: 5 });
             const projectItems = result.organization.projectV2.items.nodes;
 
             const mutation = `

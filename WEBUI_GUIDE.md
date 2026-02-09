@@ -1,6 +1,6 @@
-# AionUi WebUI Mode - Startup Guide
+# Margay WebUI Mode - Startup Guide
 
-AionUi supports WebUI mode, allowing you to access the application through a web browser. This guide covers how to start WebUI mode on all supported platforms.
+Margay supports WebUI mode, allowing you to access the application through a web browser. This guide covers how to start WebUI mode on all supported platforms.
 
 ## Table of Contents
 
@@ -16,10 +16,10 @@ AionUi supports WebUI mode, allowing you to access the application through a web
 
 ## What is WebUI Mode?
 
-WebUI mode starts AionUi with an embedded web server, allowing you to:
+WebUI mode starts Margay with an embedded web server, allowing you to:
 
 - Access the application through any modern web browser
-- Use AionUi from remote devices on the same network (with `--remote` flag)
+- Use Margay from remote devices on the same network (with `--remote` flag)
 - Run the application headless on servers
 
 Default access URL: `http://localhost:3000` (port may vary, check the application output)
@@ -34,10 +34,10 @@ Open **Command Prompt** or **PowerShell** and run:
 
 ```cmd
 # Using full path
-"C:\Program Files\AionUi\AionUi.exe" --webui
+"C:\Program Files\Margay\Margay.exe" --webui
 
-# Or if AionUi is in your PATH
-AionUi.exe --webui
+# Or if Margay is in your PATH
+Margay.exe --webui
 ```
 
 ### Method 2: Create a Desktop Shortcut
@@ -45,9 +45,9 @@ AionUi.exe --webui
 1. Right-click on desktop → **New** → **Shortcut**
 2. Enter target location:
    ```
-   "C:\Program Files\AionUi\AionUi.exe" --webui
+   "C:\Program Files\Margay\Margay.exe" --webui
    ```
-3. Name it **AionUi WebUI**
+3. Name it **Margay WebUI**
 4. Click **Finish**
 5. Double-click the shortcut to launch
 
@@ -57,7 +57,7 @@ Create `start-aionui-webui.bat`:
 
 ```batch
 @echo off
-"C:\Program Files\AionUi\AionUi.exe" --webui
+"C:\Program Files\Margay\Margay.exe" --webui
 pause
 ```
 
@@ -73,10 +73,10 @@ Open **Terminal** and run:
 
 ```bash
 # Using full path
-/Applications/AionUi.app/Contents/MacOS/AionUi --webui
+/Applications/Margay.app/Contents/MacOS/Margay --webui
 
 # Or using open command
-open -a AionUi --args --webui
+open -a Margay --args --webui
 ```
 
 ### Method 2: Create Shell Script
@@ -85,7 +85,7 @@ Create `start-aionui-webui.sh`:
 
 ```bash
 #!/bin/bash
-/Applications/AionUi.app/Contents/MacOS/AionUi --webui
+/Applications/Margay.app/Contents/MacOS/Margay --webui
 ```
 
 Make it executable and run:
@@ -102,15 +102,15 @@ chmod +x start-aionui-webui.sh
 3. Add **Run Shell Script** action
 4. Enter:
    ```bash
-   /Applications/AionUi.app/Contents/MacOS/AionUi --webui
+   /Applications/Margay.app/Contents/MacOS/Margay --webui
    ```
-5. Save as **AionUi WebUI.app**
+5. Save as **Margay WebUI.app**
 6. Double-click to launch
 
 ### Method 4: Add to Dock
 
 1. Create an Automator app (Method 3)
-2. Drag **AionUi WebUI.app** to your Dock
+2. Drag **Margay WebUI.app** to your Dock
 3. Click the Dock icon to start WebUI mode anytime
 
 ---
@@ -126,17 +126,17 @@ chmod +x start-aionui-webui.sh
 aionui --webui
 
 # Or using full path
-/opt/AionUi/aionui --webui
+/opt/Margay/aionui --webui
 ```
 
 #### For AppImage
 
 ```bash
 # Make AppImage executable (first time only)
-chmod +x AionUi-*.AppImage
+chmod +x Margay-*.AppImage
 
 # Run with --webui flag
-./AionUi-*.AppImage --webui
+./Margay-*.AppImage --webui
 ```
 
 ### Method 2: Create Desktop Entry
@@ -145,9 +145,9 @@ Create `~/.local/share/applications/aionui-webui.desktop`:
 
 ```ini
 [Desktop Entry]
-Name=AionUi WebUI
-Comment=Start AionUi in WebUI mode
-Exec=/opt/AionUi/aionui --webui
+Name=Margay WebUI
+Comment=Start Margay in WebUI mode
+Exec=/opt/Margay/aionui --webui
 Icon=aionui
 Terminal=false
 Type=Application
@@ -168,7 +168,7 @@ Create `~/bin/start-aionui-webui.sh`:
 
 ```bash
 #!/bin/bash
-/opt/AionUi/aionui --webui
+/opt/Margay/aionui --webui
 ```
 
 Make it executable:
@@ -189,13 +189,13 @@ Create `/etc/systemd/system/aionui-webui.service`:
 
 ```ini
 [Unit]
-Description=AionUi WebUI Service
+Description=Margay WebUI Service
 After=network.target
 
 [Service]
 Type=simple
 User=YOUR_USERNAME
-ExecStart=/opt/AionUi/aionui --webui --remote
+ExecStart=/opt/Margay/aionui --webui --remote
 Restart=on-failure
 RestartSec=10
 
@@ -218,13 +218,13 @@ sudo systemctl status aionui-webui.service
 
 ## Android (Termux)
 
-**Important Note**: Electron desktop mode is **not supported** on Android. However, you can run AionUi in WebUI mode using Termux with a prooted Linux environment.
+**Important Note**: Electron desktop mode is **not supported** on Android. However, you can run Margay in WebUI mode using Termux with a prooted Linux environment.
 
-> **Community Contribution**: This guide is contributed by [@Manamama](https://github.com/Manamama). Special thanks for making AionUi accessible on Android devices! 🙏
+> **Community Contribution**: This guide is contributed by [@Manamama](https://github.com/Manamama). Special thanks for making Margay accessible on Android devices! 🙏
 >
-> **Original Tutorial**: [Running AionUi WebUI on Android via Termux + Proot Ubuntu](https://gist.github.com/Manamama/b4f903c279b5e73bdad4c2c0a58d5ddd)
+> **Original Tutorial**: [Running Margay WebUI on Android via Termux + Proot Ubuntu](https://gist.github.com/Manamama/b4f903c279b5e73bdad4c2c0a58d5ddd)
 >
-> **Related Issues**: [#217 - Android Support Discussion](https://github.com/iOfficeAI/AionUi/issues/217)
+> **Related Issues**: [#217 - Android Support Discussion](https://github.com/YW1975/Margay/issues/217)
 
 ### Prerequisites
 
@@ -281,28 +281,28 @@ apt install -y \
     libcups2
 ```
 
-#### 4. Download and Install AionUi
+#### 4. Download and Install Margay
 
 ```bash
 # Download the ARM64 .deb package (replace VERSION with the actual version)
-# Check latest version at: https://github.com/iOfficeAI/AionUi/releases
-wget https://github.com/iOfficeAI/AionUi/releases/download/vVERSION/AionUi_VERSION_arm64.deb
+# Check latest version at: https://github.com/YW1975/Margay/releases
+wget https://github.com/YW1975/Margay/releases/download/vVERSION/Margay_VERSION_arm64.deb
 
 # Example (replace VERSION with the release tag, e.g. v1.5.2):
-wget https://github.com/iOfficeAI/AionUi/releases/download/vVERSION/AionUi_VERSION_arm64.deb
+wget https://github.com/YW1975/Margay/releases/download/vVERSION/Margay_VERSION_arm64.deb
 
 # Install the package
-apt install -y ./AionUi_*.deb
+apt install -y ./Margay_*.deb
 
 # Verify installation
-which AionUi
+which Margay
 ```
 
-#### 5. Launch AionUi WebUI
+#### 5. Launch Margay WebUI
 
 ```bash
-# Start AionUi in WebUI mode with no-sandbox flag
-AionUi --no-sandbox --webui
+# Start Margay in WebUI mode with no-sandbox flag
+Margay --no-sandbox --webui
 ```
 
 **Important**: The `--no-sandbox` flag is required in Termux/proot environments.
@@ -331,11 +331,11 @@ These errors are related to D-Bus and X server, which are not needed for WebUI m
 
 ### Remote Access on LAN
 
-To access AionUi from other devices on your local network:
+To access Margay from other devices on your local network:
 
 ```bash
 # Start with --remote flag
-AionUi --no-sandbox --webui --remote
+Margay --no-sandbox --webui --remote
 
 # Find your Android device's IP address
 # In Termux (outside proot):
@@ -352,23 +352,23 @@ If port 25808 is occupied:
 
 ```bash
 # Specify a different port
-AionUi --no-sandbox --webui --port 8080
+Margay --no-sandbox --webui --port 8080
 ```
 
 #### Permission Denied Errors
 
 ```bash
 # Ensure the binary has execute permissions
-chmod +x /opt/AionUi/aionui
+chmod +x /opt/Margay/aionui
 ```
 
 #### Out of Memory
 
-AionUi requires sufficient RAM. Close other apps if you encounter memory issues.
+Margay requires sufficient RAM. Close other apps if you encounter memory issues.
 
 #### Cannot Access from Browser
 
-1. Check if AionUi is running: look for "Server started" message
+1. Check if Margay is running: look for "Server started" message
 2. Try using Termux's built-in browser or Chrome
 3. Clear browser cache
 
@@ -377,25 +377,25 @@ AionUi requires sufficient RAM. Close other apps if you encounter memory issues.
 1. **Use a lightweight browser** - Chrome or Firefox Focus recommended
 2. **Close background apps** - Free up RAM for better performance
 3. **Use WiFi** - More stable than mobile data for remote access
-4. **Keep device charged** - Running AionUi consumes battery
+4. **Keep device charged** - Running Margay consumes battery
 
 ### Tested Environment
 
 - **Device**: Android 14
 - **Termux Version**: 0.118.0
-- **AionUi Version**: Latest release (e.g. 1.5.2)
+- **Margay Version**: Latest release (e.g. 1.5.2)
 - **Proot-distro**: Ubuntu (latest)
 
 ### Creating a Startup Script
 
-For convenience, create a script to launch AionUi quickly:
+For convenience, create a script to launch Margay quickly:
 
 ```bash
 # Create script in Ubuntu (proot)
 cat > ~/start-aionui.sh << 'EOF'
 #!/bin/bash
-echo "Starting AionUi WebUI..."
-AionUi --no-sandbox --webui --remote
+echo "Starting Margay WebUI..."
+Margay --no-sandbox --webui --remote
 EOF
 
 # Make executable
@@ -410,7 +410,7 @@ chmod +x ~/start-aionui.sh
 From Termux main shell:
 
 ```bash
-proot-distro login ubuntu -- bash -c "AionUi --no-sandbox --webui --remote"
+proot-distro login ubuntu -- bash -c "Margay --no-sandbox --webui --remote"
 ```
 
 ### Feedback and Improvements
@@ -418,7 +418,7 @@ proot-distro login ubuntu -- bash -c "AionUi --no-sandbox --webui --remote"
 If you encounter issues or have suggestions for improving Android support:
 
 1. Check the [original community guide](https://gist.github.com/Manamama/b4f903c279b5e73bdad4c2c0a58d5ddd)
-2. Report issues at [GitHub Issues #217](https://github.com/iOfficeAI/AionUi/issues/217)
+2. Report issues at [GitHub Issues #217](https://github.com/YW1975/Margay/issues/217)
 3. Share your experience to help other Android users!
 
 ---
@@ -430,13 +430,13 @@ To allow access from other devices on your network, use the `--remote` flag:
 ### Windows
 
 ```cmd
-AionUi.exe --webui --remote
+Margay.exe --webui --remote
 ```
 
 ### macOS
 
 ```bash
-/Applications/AionUi.app/Contents/MacOS/AionUi --webui --remote
+/Applications/Margay.app/Contents/MacOS/Margay --webui --remote
 ```
 
 ### Linux
@@ -494,7 +494,7 @@ If port 3000 is already in use, the application will automatically try the next 
 
 ```cmd
 # Allow through Windows Firewall
-netsh advfirewall firewall add rule name="AionUi WebUI" dir=in action=allow protocol=TCP localport=3000
+netsh advfirewall firewall add rule name="Margay WebUI" dir=in action=allow protocol=TCP localport=3000
 ```
 
 **Linux (UFW):**
@@ -504,7 +504,7 @@ sudo ufw allow 3000/tcp
 ```
 
 **macOS:**
-Go to **System Preferences** → **Security & Privacy** → **Firewall** → **Firewall Options** → Add AionUi
+Go to **System Preferences** → **Security & Privacy** → **Firewall** → **Firewall Options** → Add Margay
 
 ### Application Not Found
 
@@ -513,13 +513,13 @@ Go to **System Preferences** → **Security & Privacy** → **Firewall** → **F
 **Windows:**
 
 ```cmd
-where AionUi.exe
+where Margay.exe
 ```
 
 **macOS:**
 
 ```bash
-mdfind -name "AionUi.app"
+mdfind -name "Margay.app"
 ```
 
 **Linux:**
@@ -535,7 +535,7 @@ find /opt -name "aionui" 2>/dev/null
 **Windows (PowerShell):**
 
 ```powershell
-& "C:\Program Files\AionUi\AionUi.exe" --webui 2>&1 | Tee-Object -FilePath aionui.log
+& "C:\Program Files\Margay\Margay.exe" --webui 2>&1 | Tee-Object -FilePath aionui.log
 ```
 
 **macOS/Linux:**
@@ -575,9 +575,9 @@ From v1.5.0+, you can store persistent WebUI preferences in `webui.config.json` 
 
 | Platform | Location                                                 |
 | -------- | -------------------------------------------------------- |
-| Windows  | `%APPDATA%/AionUi/webui.config.json`                     |
-| macOS    | `~/Library/Application Support/AionUi/webui.config.json` |
-| Linux    | `~/.config/AionUi/webui.config.json`                     |
+| Windows  | `%APPDATA%/Margay/webui.config.json`                     |
+| macOS    | `~/Library/Application Support/Margay/webui.config.json` |
+| Linux    | `~/.config/Margay/webui.config.json`                     |
 
 Example file:
 
@@ -614,20 +614,20 @@ If you forgot your admin password in WebUI mode, you can reset it using the `--r
 
 ```cmd
 # Using full path
-"C:\Program Files\AionUi\AionUi.exe" --resetpass
+"C:\Program Files\Margay\Margay.exe" --resetpass
 
 # Or for a specific user
-"C:\Program Files\AionUi\AionUi.exe" --resetpass username
+"C:\Program Files\Margay\Margay.exe" --resetpass username
 ```
 
 **macOS:**
 
 ```bash
 # Using full path
-/Applications/AionUi.app/Contents/MacOS/AionUi --resetpass
+/Applications/Margay.app/Contents/MacOS/Margay --resetpass
 
 # Or for a specific user
-/Applications/AionUi.app/Contents/MacOS/AionUi --resetpass username
+/Applications/Margay.app/Contents/MacOS/Margay --resetpass username
 ```
 
 **Linux:**
@@ -640,7 +640,7 @@ aionui --resetpass
 aionui --resetpass username
 
 # Or using full path
-/opt/AionUi/aionui --resetpass
+/opt/Margay/aionui --resetpass
 ```
 
 ### What happens when you run --resetpass:
@@ -675,10 +675,8 @@ npm run --resetpass username
 
 ## Additional Resources
 
-- [Main README](./readme.md)
-- [中文说明](./readme_ch.md)
-- [日本語ドキュメント](./readme_jp.md)
-- [GitHub Issues](https://github.com/iOfficeAI/AionUi/issues)
+- [Main README](./README.md)
+- [GitHub Issues](https://github.com/YW1975/Margay/issues)
 
 ---
 
@@ -687,13 +685,13 @@ npm run --resetpass username
 If you encounter any issues:
 
 1. Check the [Troubleshooting](#troubleshooting) section
-2. Search [existing issues](https://github.com/iOfficeAI/AionUi/issues)
-3. Create a [new issue](https://github.com/iOfficeAI/AionUi/issues/new) with:
+2. Search [existing issues](https://github.com/YW1975/Margay/issues)
+3. Create a [new issue](https://github.com/YW1975/Margay/issues/new) with:
    - Your OS and version
-   - AionUi version
+   - Margay version
    - Steps to reproduce
    - Error messages or logs
 
 ---
 
-**Happy using AionUi in WebUI mode!** 🚀
+**Happy using Margay in WebUI mode!** 🚀

@@ -6,6 +6,7 @@
 
 import { ipcBridge } from '@/common';
 import { ConfigStorage } from '@/common/storage';
+import type { TProviderWithModel } from '@/common/storage';
 import type { AcpBackend } from '@/types/acpTypes';
 import ClaudeLogo from '@/renderer/assets/logos/claude.svg';
 import CodexLogo from '@/renderer/assets/logos/codex.svg';
@@ -128,17 +129,18 @@ const ConversationTabs: React.FC = () => {
       }
 
       try {
+        const convType = resolveConversationType(agent.backend);
+
+        // Only Gemini requires a configured model; ACP/Codex agents ignore it
         const model = await resolveDefaultModel();
-        if (!model) {
-          Message.error('No model configured. Please configure a model in Settings.');
+        if (convType === 'gemini' && !model) {
+          Message.error(t('settings.noConfiguredModels'));
           return;
         }
-
-        const convType = resolveConversationType(agent.backend);
         const conversation = await ipcBridge.conversation.create.invoke({
           type: convType,
           name: t('conversation.welcome.newConversation'),
-          model,
+          model: model ?? ({ useModel: '' } as TProviderWithModel), // ACP/Codex don't use model but field is required by type
           extra: {
             workspace,
             customWorkspace: true,

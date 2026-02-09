@@ -433,8 +433,8 @@ jobs:
             out/*.dmg
             out/*.deb
             out/*.AppImage
-            out/AionUi-*-win32-*.zip
-            out/AionUi-*-mac-*.zip
+            out/Margay-*-win32-*.zip
+            out/Margay-*-mac-*.zip
           if-no-files-found: warn
           retention-days: 7
 

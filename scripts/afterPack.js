@@ -54,7 +54,7 @@ module.exports = async function afterPack(context) {
   // Windows/Linux: appOutDir/resources
   let resourcesDir;
   if (electronPlatformName === 'darwin') {
-    const appName = packager?.appInfo?.productFilename || 'AionUi';
+    const appName = packager?.appInfo?.productFilename || 'Margay';
     resourcesDir = path.join(appOutDir, `${appName}.app`, 'Contents', 'Resources');
   } else {
     resourcesDir = path.join(appOutDir, 'resources');
