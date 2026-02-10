@@ -1,17 +1,17 @@
-# AionUI Code Review Style Guide
+# Margay Code Review Style Guide
 
 ## Overview
 
-This document defines the coding standards and best practices for the AionUI project. The AI code reviewer should use these guidelines when reviewing pull requests.
+This document defines the coding standards and best practices for the Margay project. The AI code reviewer should use these guidelines when reviewing pull requests.
 
 ## Technology Stack
 
-- **Runtime**: Bun
+- **Runtime**: Node.js 22+
 - **Framework**: Electron + React
 - **Language**: TypeScript (strict mode)
-- **Styling**: Tailwind CSS + Arco Design
+- **Styling**: UnoCSS + Arco Design
 - **State Management**: React hooks + SWR
-- **i18n**: react-i18next (support: en-US, zh-CN, zh-TW, ja-JP, ko-KR)
+- **i18n**: react-i18next (support: en-US, zh-CN, zh-TW, ja-JP, ko-KR, tr-TR)
 
 ## Code Quality Standards
 
@@ -19,7 +19,7 @@ This document defines the coding standards and best practices for the AionUI pro
 
 - Use strict TypeScript configuration
 - Avoid `any` type - use `unknown` or proper generics
-- Prefer interfaces over type aliases for object shapes
+- Prefer `type` over `interface` (per ESLint config)
 - Use explicit return types for exported functions
 - Use optional chaining (`?.`) and nullish coalescing (`??`)
 
@@ -63,7 +63,10 @@ src/
 │   ├── hooks/      # Custom React hooks
 │   ├── pages/      # Page components
 │   └── i18n/       # Internationalization
-└── agent/          # AI agent related code
+├── agent/          # AI agent related code
+├── channels/       # Agent communication system (Telegram, Lark)
+├── webserver/      # Express + WebSocket server
+└── worker/         # Background task workers
 ```
 
 ## Commit Message Convention
