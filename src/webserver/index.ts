@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 Margay
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -193,7 +193,7 @@ function displayInitialCredentials(credentials: { username: string; password: st
   const { qrUrl } = generateQRLoginUrlDirect(port, allowRemote);
 
   console.log('\n' + '='.repeat(70));
-  console.log('🎉 AionUI Web Server Started Successfully! / AionUI Web 服务器启动成功！');
+  console.log('🎉 Margay Web Server Started Successfully! / Margay Web 服务器启动成功！');
   console.log('='.repeat(70));
   console.log(`\n📍 Local URL / 本地地址:    ${localUrl}`);
 

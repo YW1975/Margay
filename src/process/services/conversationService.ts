@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 Margay
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -57,8 +57,8 @@ export interface ICreateConversationResult {
  * 通用会话创建服务
  * Common conversation creation service
  *
- * 提供统一的会话创建逻辑，供 AionUI、Telegram 及其他 IM 使用
- * Provides unified conversation creation logic for AionUI, Telegram and other IMs
+ * 提供统一的会话创建逻辑，供 Margay、Telegram 及其他 IM 使用
+ * Provides unified conversation creation logic for Margay, Telegram and other IMs
  */
 export class ConversationService {
   /**
@@ -110,7 +110,7 @@ export class ConversationService {
         return { success: false, error: result.error };
       }
 
-      console.log(`[ConversationService] Created conversation ${conversation.id} with source=${params.source || 'aionui'}`);
+      console.log(`[ConversationService] Created conversation ${conversation.id} with source=${params.source || 'margay'}`);
       return { success: true, conversation };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -189,7 +189,7 @@ export class ConversationService {
         return { success: false, error: result.error };
       }
 
-      console.log(`[ConversationService] Created ${type} conversation ${conversation.id} with source=${source || 'aionui'}`);
+      console.log(`[ConversationService] Created ${type} conversation ${conversation.id} with source=${source || 'margay'}`);
       return { success: true, conversation };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);

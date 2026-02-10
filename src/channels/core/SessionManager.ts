@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 Margay
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -14,7 +14,7 @@ import type { ChannelAgentType, IChannelSession, IChannelUser, PluginType } from
  * MVP Strategy: Single active session per user
  * - Each authorized user has at most one active session
  * - Creating a new session clears the previous one
- * - Sessions are linked to conversations in the main AionUI database
+ * - Sessions are linked to conversations in the main Margay database
  */
 export class SessionManager {
   // In-memory cache of active sessions for quick lookup
@@ -171,8 +171,8 @@ export class SessionManager {
 
   /**
    * Clear session by conversation ID
-   * Used when a conversation is deleted from AionUI
-   * 根据 conversationId 清理 session（当会话从 AionUI 删除时调用）
+   * Used when a conversation is deleted from Margay
+   * 根据 conversationId 清理 session（当会话从 Margay 删除时调用）
    */
   clearSessionByConversationId(conversationId: string): IChannelSession | null {
     const db = getDatabase();

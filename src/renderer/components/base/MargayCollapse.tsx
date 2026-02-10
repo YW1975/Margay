@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 Margay
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -11,7 +11,7 @@ import React, { useMemo, useState } from 'react';
 /**
  * 可折叠面板组件属性 / Collapsible panel component props
  */
-export interface AionCollapseProps {
+export interface MargayCollapseProps {
   children: React.ReactNode;
   /** 额外的类名 / Additional class name */
   className?: string;
@@ -34,7 +34,7 @@ export interface AionCollapseProps {
 /**
  * 可折叠面板子项属性 / Collapsible panel item props
  */
-export interface AionCollapseItemProps {
+export interface MargayCollapseItemProps {
   /** 唯一标识符 / Unique identifier */
   name: string;
   /** 面板标题 / Panel header */
@@ -72,8 +72,8 @@ const DefaultIcon: React.FC<{ active: boolean }> = ({ active }) => <span classNa
  * 折叠面板子项组件（仅用于类型检查和结构化）
  * Collapse item component (used for type checking and structure only)
  */
-const AionCollapseItem: React.FC<AionCollapseItemProps> = ({ children }) => <>{children}</>;
-AionCollapseItem.displayName = 'AionCollapseItem';
+const MargayCollapseItem: React.FC<MargayCollapseItemProps> = ({ children }) => <>{children}</>;
+MargayCollapseItem.displayName = 'MargayCollapseItem';
 
 /**
  * 可折叠面板组件 / Collapsible panel component
@@ -84,31 +84,31 @@ AionCollapseItem.displayName = 'AionCollapseItem';
  * @example
  * ```tsx
  * // 基本用法 / Basic usage
- * <AionCollapse defaultActiveKey={['1']}>
- *   <AionCollapse.Item name="1" header="面板1">
+ * <MargayCollapse defaultActiveKey={['1']}>
+ *   <MargayCollapse.Item name="1" header="面板1">
  *     内容1
- *   </AionCollapse.Item>
- *   <AionCollapse.Item name="2" header="面板2">
+ *   </MargayCollapse.Item>
+ *   <MargayCollapse.Item name="2" header="面板2">
  *     内容2
- *   </AionCollapse.Item>
- * </AionCollapse>
+ *   </MargayCollapse.Item>
+ * </MargayCollapse>
  *
  * // 手风琴模式 / Accordion mode
- * <AionCollapse accordion defaultActiveKey="1">
- *   <AionCollapse.Item name="1" header="面板1">内容1</AionCollapse.Item>
- *   <AionCollapse.Item name="2" header="面板2">内容2</AionCollapse.Item>
- * </AionCollapse>
+ * <MargayCollapse accordion defaultActiveKey="1">
+ *   <MargayCollapse.Item name="1" header="面板1">内容1</MargayCollapse.Item>
+ *   <MargayCollapse.Item name="2" header="面板2">内容2</MargayCollapse.Item>
+ * </MargayCollapse>
  *
  * // 自定义图标 / Custom icon
- * <AionCollapse
+ * <MargayCollapse
  *   expandIcon={(active) => <Icon type={active ? 'up' : 'down'} />}
  *   expandIconPosition="right"
  * >
- *   <AionCollapse.Item name="1" header="面板1">内容1</AionCollapse.Item>
- * </AionCollapse>
+ *   <MargayCollapse.Item name="1" header="面板1">内容1</MargayCollapse.Item>
+ * </MargayCollapse>
  * ```
  */
-const AionCollapseComponent: React.FC<AionCollapseProps> & { Item: typeof AionCollapseItem } = ({ children, className, defaultActiveKey, activeKey, onChange, accordion, expandIcon, expandIconPosition = 'left', bordered = true }) => {
+const MargayCollapseComponent: React.FC<MargayCollapseProps> & { Item: typeof MargayCollapseItem } = ({ children, className, defaultActiveKey, activeKey, onChange, accordion, expandIcon, expandIconPosition = 'left', bordered = true }) => {
   // 判断是否为受控模式 / Determine if in controlled mode
   const isControlled = activeKey !== undefined;
   const [internalKeys, setInternalKeys] = useState<string[]>(normalizeKeys(defaultActiveKey));
@@ -116,8 +116,8 @@ const AionCollapseComponent: React.FC<AionCollapseProps> & { Item: typeof AionCo
 
   // 提取并过滤有效的子面板项 / Extract and filter valid child panel items
   const items = useMemo(() => {
-    return React.Children.toArray(children).filter((child): child is React.ReactElement<AionCollapseItemProps> => {
-      return React.isValidElement(child) && child.type === AionCollapseItem;
+    return React.Children.toArray(children).filter((child): child is React.ReactElement<MargayCollapseItemProps> => {
+      return React.isValidElement(child) && child.type === MargayCollapseItem;
     });
   }, [children]);
 
@@ -178,6 +178,6 @@ const AionCollapseComponent: React.FC<AionCollapseProps> & { Item: typeof AionCo
   );
 };
 
-AionCollapseComponent.Item = AionCollapseItem;
+MargayCollapseComponent.Item = MargayCollapseItem;
 
-export default AionCollapseComponent;
+export default MargayCollapseComponent;

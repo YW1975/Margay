@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 Margay
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -13,7 +13,7 @@ interface StepsWrapperProps extends StepsProps {
 }
 
 const StepsWrapper: React.FC<StepsWrapperProps> & { Step: typeof Steps.Step } = ({ className, ...props }) => {
-  return <Steps {...props} className={`aionui-steps ${className || ''}`} />;
+  return <Steps {...props} className={`margay-steps ${className || ''}`} />;
 };
 
 StepsWrapper.Step = Steps.Step;

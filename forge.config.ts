@@ -17,8 +17,8 @@ import packageJson from './package.json';
 // 允许开发者通过环境变量修改 dev server / 日志端口，无需改代码
 const DEFAULT_DEV_SERVER_PORT = 3000;
 const DEFAULT_LOGGER_PORT = 9000;
-const DEV_PORT_ENV_KEYS = ['MARGAY_DEV_PORT', 'AIONUI_DEV_PORT', 'DEV_SERVER_PORT', 'PORT'] as const;
-const LOGGER_PORT_ENV_KEYS = ['MARGAY_LOGGER_PORT', 'AIONUI_LOGGER_PORT', 'DEV_LOGGER_PORT', 'LOGGER_PORT'] as const;
+const DEV_PORT_ENV_KEYS = ['MARGAY_DEV_PORT', 'MARGAY_DEV_PORT', 'DEV_SERVER_PORT', 'PORT'] as const;
+const LOGGER_PORT_ENV_KEYS = ['MARGAY_LOGGER_PORT', 'MARGAY_LOGGER_PORT', 'DEV_LOGGER_PORT', 'LOGGER_PORT'] as const;
 
 const parsePort = (value?: string | null): number | null => {
   if (!value) return null;

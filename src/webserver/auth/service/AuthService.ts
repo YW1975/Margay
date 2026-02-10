@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 Margay
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -237,8 +237,8 @@ export class AuthService {
 
     return jwt.sign(payload, this.getJwtSecret(), {
       expiresIn: this.TOKEN_EXPIRY,
-      issuer: 'aionui',
-      audience: 'aionui-webui',
+      issuer: 'margay',
+      audience: 'margay-webui',
     });
   }
 
@@ -267,8 +267,8 @@ export class AuthService {
       }
 
       const decoded = jwt.verify(token, this.getJwtSecret(), {
-        issuer: 'aionui',
-        audience: 'aionui-webui',
+        issuer: 'margay',
+        audience: 'margay-webui',
       }) as RawTokenPayload;
 
       return {
@@ -288,7 +288,7 @@ export class AuthService {
    * 验证 WebSocket Token
    * Verify WebSocket token
    *
-   * 复用 Web 登录 token (audience: aionui-webui)
+   * 复用 Web 登录 token (audience: margay-webui)
    *
    * @param token - JWT token string
    * @returns Token payload if valid, null otherwise
@@ -301,8 +301,8 @@ export class AuthService {
       }
 
       const decoded = jwt.verify(token, this.getJwtSecret(), {
-        issuer: 'aionui',
-        audience: 'aionui-webui', // 使用与 Web 登录相同的 audience
+        issuer: 'margay',
+        audience: 'margay-webui', // 使用与 Web 登录相同的 audience
       }) as RawTokenPayload;
 
       return {

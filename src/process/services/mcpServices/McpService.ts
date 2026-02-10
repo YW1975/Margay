@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 Margay
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -11,7 +11,7 @@ import { ClaudeMcpAgent } from './agents/ClaudeMcpAgent';
 import { QwenMcpAgent } from './agents/QwenMcpAgent';
 import { IflowMcpAgent } from './agents/IflowMcpAgent';
 import { GeminiMcpAgent } from './agents/GeminiMcpAgent';
-import { AionuiMcpAgent } from './agents/AionuiMcpAgent';
+import { MargayMcpAgent } from './agents/MargayMcpAgent';
 import { CodexMcpAgent } from './agents/CodexMcpAgent';
 import type { IMcpProtocol, DetectedMcpServer, McpConnectionTestResult, McpSyncResult, McpSource } from './McpProtocol';
 
@@ -21,7 +21,7 @@ import type { IMcpProtocol, DetectedMcpServer, McpConnectionTestResult, McpSyncR
  *
  * Agent 类型说明：
  * - AcpBackend ('claude', 'qwen', 'iflow', 'gemini', 'codex'等): 支持的 ACP 后端
- * - 'aionui': @office-ai/aioncli-core (AionUi 本地管理的 Gemini 实现)
+ * - 'margay': @office-ai/aioncli-core (Margay 本地管理的 Gemini 实现)
  */
 export class McpService {
   private agents: Map<McpSource, IMcpProtocol>;
@@ -62,7 +62,7 @@ export class McpService {
       ['qwen', new QwenMcpAgent()],
       ['iflow', new IflowMcpAgent()],
       ['gemini', new GeminiMcpAgent()],
-      ['aionui', new AionuiMcpAgent()], // AionUi 本地 @office-ai/aioncli-core
+      ['margay', new MargayMcpAgent()], // Margay 本地 @office-ai/aioncli-core
       ['codex', new CodexMcpAgent()],
     ]);
   }
@@ -115,9 +115,9 @@ export class McpService {
     const promises = allAgentsToCheck.map(async (agent) => {
       try {
         // 跳过 fork 的 Gemini（backend='gemini' 且 cliPath=undefined）
-        // fork 的 Gemini 的 MCP 配置应该由 AionuiMcpAgent 管理
+        // fork 的 Gemini 的 MCP 配置应该由 MargayMcpAgent 管理
         if (agent.backend === 'gemini' && !agent.cliPath) {
-          console.log(`[McpService] Skipping fork Gemini (ACP only, MCP managed by AionuiMcpAgent)`);
+          console.log(`[McpService] Skipping fork Gemini (ACP only, MCP managed by MargayMcpAgent)`);
           return null;
         }
 

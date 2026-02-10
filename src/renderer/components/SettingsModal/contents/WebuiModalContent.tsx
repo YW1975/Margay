@@ -1,12 +1,12 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 Margay
  * SPDX-License-Identifier: Apache-2.0
  */
 
 import { shell, webui, type IWebUIStatus } from '@/common/ipcBridge';
-import AionModal from '@/renderer/components/base/AionModal';
-import AionScrollArea from '@/renderer/components/base/AionScrollArea';
+import MargayModal from '@/renderer/components/base/MargayModal';
+import MargayScrollArea from '@/renderer/components/base/MargayScrollArea';
 import { isElectronDesktop } from '@/renderer/utils/platform';
 import { Form, Input, Message, Switch, Tooltip } from '@arco-design/web-react';
 import { Copy, Refresh } from '@icon-park/react';
@@ -544,7 +544,7 @@ const WebuiModalContent: React.FC = () => {
 
   return (
     <div className='flex flex-col h-full w-full'>
-      <AionScrollArea className='flex-1 min-h-0 pb-16px' disableOverflow={isPageMode}>
+      <MargayScrollArea className='flex-1 min-h-0 pb-16px' disableOverflow={isPageMode}>
         <div className='space-y-16px'>
           {/* 标题 / Title */}
           <h2 className='text-20px font-500 text-t-primary m-0'>WebUI</h2>
@@ -668,10 +668,10 @@ const WebuiModalContent: React.FC = () => {
             <ChannelModalContent />
           </div>
         </div>
-      </AionScrollArea>
+      </MargayScrollArea>
 
       {/* 设置新密码弹窗 / Set New Password Modal */}
-      <AionModal visible={setPasswordModalVisible} onCancel={() => setSetPasswordModalVisible(false)} onOk={handleSetNewPassword} confirmLoading={passwordLoading} title={t('settings.webui.setNewPassword')} size='small'>
+      <MargayModal visible={setPasswordModalVisible} onCancel={() => setSetPasswordModalVisible(false)} onOk={handleSetNewPassword} confirmLoading={passwordLoading} title={t('settings.webui.setNewPassword')} size='small'>
         <Form form={form} layout='vertical' className='pt-16px'>
           <Form.Item
             label={t('settings.webui.newPassword')}
@@ -702,7 +702,7 @@ const WebuiModalContent: React.FC = () => {
             <Input.Password placeholder={t('settings.webui.confirmPasswordPlaceholder')} />
           </Form.Item>
         </Form>
-      </AionModal>
+      </MargayModal>
     </div>
   );
 };

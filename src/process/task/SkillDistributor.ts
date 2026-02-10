@@ -1,14 +1,14 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 Margay
  * SPDX-License-Identifier: Apache-2.0
  */
 
 /**
- * SkillDistributor - Distributes AionUi-managed skills to engine discovery directories.
+ * SkillDistributor - Distributes Margay-managed skills to engine discovery directories.
  *
  * Rev 4: All-copy distribution with mtime-based refresh, flat storage with
- * .aionui-skill.json metadata, and path injection for script-heavy skills.
+ * .margay-skill.json metadata, and path injection for script-heavy skills.
  *
  * Supports: Claude Code (.claude/skills/), Codex (.agents/skills/), Gemini (.gemini/skills/)
  */
@@ -17,25 +17,25 @@ import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, r
 import path from 'path';
 import { getSkillsDir } from '../initStorage';
 
-const MANIFEST_FILENAME = '.aionui-manifest.json';
-const PROVENANCE_MARKER = '.aionui-managed';
-const SKILL_METADATA_FILENAME = '.aionui-skill.json';
+const MANIFEST_FILENAME = '.margay-manifest.json';
+const PROVENANCE_MARKER = '.margay-managed';
+const SKILL_METADATA_FILENAME = '.margay-skill.json';
 
 type DistributionMode = 'copy';
 
 interface ManifestData {
-  managedBy: 'aionui';
+  managedBy: 'margay';
   skills: string[];
 }
 
 interface SkillMetadata {
-  managedBy: 'aionui';
+  managedBy: 'margay';
   builtin: boolean;
   sourceDir?: string;
 }
 
 /**
- * Read .aionui-skill.json metadata from a skill directory.
+ * Read .margay-skill.json metadata from a skill directory.
  */
 function readSkillMetadata(skillDir: string): SkillMetadata | null {
   const metadataPath = path.join(skillDir, SKILL_METADATA_FILENAME);
@@ -43,7 +43,7 @@ function readSkillMetadata(skillDir: string): SkillMetadata | null {
     if (!existsSync(metadataPath)) return null;
     const raw = readFileSync(metadataPath, 'utf-8');
     const data = JSON.parse(raw);
-    if (data?.managedBy === 'aionui' && typeof data.builtin === 'boolean') {
+    if (data?.managedBy === 'margay' && typeof data.builtin === 'boolean') {
       return data as SkillMetadata;
     }
     return null;
@@ -53,11 +53,11 @@ function readSkillMetadata(skillDir: string): SkillMetadata | null {
 }
 
 /**
- * Write .aionui-skill.json metadata to a skill directory.
+ * Write .margay-skill.json metadata to a skill directory.
  */
 function writeSkillMetadata(skillDir: string, builtin: boolean): void {
   const metadataPath = path.join(skillDir, SKILL_METADATA_FILENAME);
-  const data: SkillMetadata = { managedBy: 'aionui', builtin, sourceDir: skillDir };
+  const data: SkillMetadata = { managedBy: 'margay', builtin, sourceDir: skillDir };
   try {
     writeFileSync(metadataPath, JSON.stringify(data, null, 2), 'utf-8');
   } catch (error) {
@@ -80,23 +80,23 @@ function shouldDistributeSkill(skillName: string, isBuiltin: boolean, enabledSki
 }
 
 /**
- * Check if an entry in the target directory is managed by AionUi (is a symlink pointing to ~/.aionui/skills/).
+ * Check if an entry in the target directory is managed by Margay (is a symlink pointing to ~/.margay/skills/).
  */
-function isAionUiManagedSymlink(entryPath: string, aionuiSkillsDir: string): boolean {
+function isMargayManagedSymlink(entryPath: string, margaySkillsDir: string): boolean {
   try {
     const stats = lstatSync(entryPath);
     if (!stats.isSymbolicLink()) return false;
     const target = readlinkSync(entryPath);
     // Resolve to absolute for comparison
     const resolvedTarget = path.isAbsolute(target) ? target : path.resolve(path.dirname(entryPath), target);
-    return resolvedTarget.startsWith(aionuiSkillsDir);
+    return resolvedTarget.startsWith(margaySkillsDir);
   } catch {
     return false;
   }
 }
 
 /**
- * Read the AionUi manifest from a target directory (used for copy-mode tracking on Windows).
+ * Read the Margay manifest from a target directory (used for copy-mode tracking on Windows).
  */
 function readManifest(targetDir: string): ManifestData | null {
   const manifestPath = path.join(targetDir, MANIFEST_FILENAME);
@@ -104,7 +104,7 @@ function readManifest(targetDir: string): ManifestData | null {
     if (!existsSync(manifestPath)) return null;
     const raw = readFileSync(manifestPath, 'utf-8');
     const data = JSON.parse(raw);
-    if (data?.managedBy === 'aionui' && Array.isArray(data.skills)) {
+    if (data?.managedBy === 'margay' && Array.isArray(data.skills)) {
       return data as ManifestData;
     }
     return null;
@@ -114,11 +114,11 @@ function readManifest(targetDir: string): ManifestData | null {
 }
 
 /**
- * Write the AionUi manifest to a target directory.
+ * Write the Margay manifest to a target directory.
  */
 function writeManifest(targetDir: string, skills: string[]): void {
   const manifestPath = path.join(targetDir, MANIFEST_FILENAME);
-  const data: ManifestData = { managedBy: 'aionui', skills };
+  const data: ManifestData = { managedBy: 'margay', skills };
   try {
     writeFileSync(manifestPath, JSON.stringify(data, null, 2), 'utf-8');
   } catch (error) {
@@ -127,8 +127,8 @@ function writeManifest(targetDir: string, skills: string[]): void {
 }
 
 /**
- * Check if a copied skill directory contains the AionUi provenance marker.
- * The marker is written inside each AionUi-managed copy and proves ownership
+ * Check if a copied skill directory contains the Margay provenance marker.
+ * The marker is written inside each Margay-managed copy and proves ownership
  * even if the manifest is stale. Both manifest listing AND marker must agree.
  */
 function hasProvenanceMarker(skillDir: string): boolean {
@@ -144,18 +144,18 @@ function hasProvenanceMarker(skillDir: string): boolean {
  */
 function writeProvenanceMarker(skillDir: string): void {
   try {
-    writeFileSync(path.join(skillDir, PROVENANCE_MARKER), 'managed-by-aionui\n', 'utf-8');
+    writeFileSync(path.join(skillDir, PROVENANCE_MARKER), 'managed-by-margay\n', 'utf-8');
   } catch {
     // Non-fatal: marker write failure doesn't block distribution
   }
 }
 
 /**
- * Check if an entry is AionUi-managed via manifest AND provenance marker.
+ * Check if an entry is Margay-managed via manifest AND provenance marker.
  * Requires both: manifest lists the skill AND the directory contains the marker file.
  * This prevents stale manifests from causing deletion of engine-managed entries.
  */
-function isAionUiManagedCopy(skillName: string, manifest: ManifestData | null, targetPath: string): boolean {
+function isMargayManagedCopy(skillName: string, manifest: ManifestData | null, targetPath: string): boolean {
   if (!manifest || !manifest.skills.includes(skillName)) return false;
   return hasProvenanceMarker(targetPath);
 }
@@ -182,17 +182,17 @@ function needsUpdate(sourcePath: string, targetPath: string): boolean {
  * Rev 4: copy-only (no symlinks), with mtime check and legacy symlink migration.
  * Returns the distribution mode used, or null if skipped.
  */
-function distributeSkillEntry(sourcePath: string, targetPath: string, aionuiSkillsDir: string, manifest: ManifestData | null): DistributionMode | null {
+function distributeSkillEntry(sourcePath: string, targetPath: string, margaySkillsDir: string, manifest: ManifestData | null): DistributionMode | null {
   const skillName = path.basename(targetPath);
 
   // Check if target already exists
   if (existsSync(targetPath) || lstatSafe(targetPath)) {
-    // Legacy symlink migration: replace AionUi symlinks with copies
-    if (isAionUiManagedSymlink(targetPath, aionuiSkillsDir)) {
+    // Legacy symlink migration: replace Margay symlinks with copies
+    if (isMargayManagedSymlink(targetPath, margaySkillsDir)) {
       unlinkSync(targetPath);
       // Fall through to copy below
-    } else if (isAionUiManagedCopy(skillName, manifest, targetPath)) {
-      // AionUi-managed copy — check mtime before re-copying
+    } else if (isMargayManagedCopy(skillName, manifest, targetPath)) {
+      // Margay-managed copy — check mtime before re-copying
       if (!needsUpdate(sourcePath, targetPath)) {
         return 'copy'; // Already current, no-op
       }
@@ -285,11 +285,11 @@ function lstatSafe(p: string): boolean {
 }
 
 /**
- * Reconcile: remove stale AionUi-managed entries from target directory.
- * Only removes entries that are AionUi-managed (symlinks to ~/.aionui/skills/ or listed in manifest).
+ * Reconcile: remove stale Margay-managed entries from target directory.
+ * Only removes entries that are Margay-managed (symlinks to ~/.margay/skills/ or listed in manifest).
  * Never touches engine-managed entries.
  */
-function cleanupStaleEntries(targetDir: string, desiredSkillNames: Set<string>, aionuiSkillsDir: string, usedCopyMode: boolean): void {
+function cleanupStaleEntries(targetDir: string, desiredSkillNames: Set<string>, margaySkillsDir: string, usedCopyMode: boolean): void {
   if (!existsSync(targetDir)) return;
 
   try {
@@ -302,8 +302,8 @@ function cleanupStaleEntries(targetDir: string, desiredSkillNames: Set<string>, 
 
       const entryPath = path.join(targetDir, entry.name);
 
-      // Check if AionUi-managed via symlink
-      if (isAionUiManagedSymlink(entryPath, aionuiSkillsDir)) {
+      // Check if Margay-managed via symlink
+      if (isMargayManagedSymlink(entryPath, margaySkillsDir)) {
         try {
           unlinkSync(entryPath);
           console.log(`[SkillDistributor] Removed stale symlink: ${entry.name}`);
@@ -313,7 +313,7 @@ function cleanupStaleEntries(targetDir: string, desiredSkillNames: Set<string>, 
         continue;
       }
 
-      // Check if AionUi-managed via manifest AND provenance marker (copy mode)
+      // Check if Margay-managed via manifest AND provenance marker (copy mode)
       if (manifest && manifest.skills.includes(entry.name) && hasProvenanceMarker(entryPath)) {
         try {
           rmSync(entryPath, { recursive: true, force: true });
@@ -330,8 +330,8 @@ function cleanupStaleEntries(targetDir: string, desiredSkillNames: Set<string>, 
 }
 
 /**
- * Get the list of all available skill names (builtin + optional) from AionUi skills directory.
- * Uses .aionui-skill.json metadata for classification (Rev 4 flat storage).
+ * Get the list of all available skill names (builtin + optional) from Margay skills directory.
+ * Uses .margay-skill.json metadata for classification (Rev 4 flat storage).
  * Backward compatible: skills without metadata in _builtin/ are still treated as builtin.
  */
 function discoverAllSkillNames(): { builtins: string[]; optional: string[] } {
@@ -450,7 +450,7 @@ function distributeToEngineDir(targetDir: string, enabledSkills?: string[]): voi
 }
 
 /**
- * Distribute AionUi skills to Claude Code's discovery directory.
+ * Distribute Margay skills to Claude Code's discovery directory.
  * Claude Code discovers skills from {workspace}/.claude/skills/
  */
 export function distributeForClaude(workspace: string, enabledSkills?: string[]): void {
@@ -463,7 +463,7 @@ export function distributeForClaude(workspace: string, enabledSkills?: string[])
 }
 
 /**
- * Distribute AionUi skills to Codex CLI's discovery directory.
+ * Distribute Margay skills to Codex CLI's discovery directory.
  * Codex discovers skills from {workspace}/.agents/skills/
  */
 export function distributeForCodex(workspace: string, enabledSkills?: string[]): void {
@@ -476,7 +476,7 @@ export function distributeForCodex(workspace: string, enabledSkills?: string[]):
 }
 
 /**
- * Distribute AionUi skills to Gemini CLI's discovery directory.
+ * Distribute Margay skills to Gemini CLI's discovery directory.
  * Rev 4: Gemini now uses workspace .gemini/skills/ for engine-native detection parity.
  * Note: aioncli-core still loads skills from its own path; this is for UI display only.
  * Distribution is bootstrap-only (not per-send).
@@ -494,10 +494,10 @@ export function distributeForGemini(workspace: string, enabledSkills?: string[])
  * Compute disabledSkills for Gemini's native SkillManager.
  *
  * Gemini's aioncli-core SkillManager scans the entire skillsDir and uses
- * disabledSkills to filter. We convert AionUi's enabledSkills (whitelist)
+ * disabledSkills to filter. We convert Margay's enabledSkills (whitelist)
  * to disabledSkills (blacklist) for the native engine.
  *
- * @param enabledSkills - AionUi's enabledSkills from preset/conversation
+ * @param enabledSkills - Margay's enabledSkills from preset/conversation
  * @returns disabledSkills array for aioncli-core, or undefined if no filtering needed
  */
 /** Exported for testing. */
@@ -513,7 +513,7 @@ export type EngineNativeSkill = {
 };
 
 /**
- * Detect skills in engine discovery directories that are NOT managed by AionUi.
+ * Detect skills in engine discovery directories that are NOT managed by Margay.
  * These are "engine-native" skills — created by the agent during a conversation
  * or manually placed by the user in the engine directory.
  *
@@ -521,7 +521,7 @@ export type EngineNativeSkill = {
  */
 export function detectEngineNativeSkills(workspace: string): EngineNativeSkill[] {
   const results: EngineNativeSkill[] = [];
-  const aionuiSkillsDir = getSkillsDir();
+  const margaySkillsDir = getSkillsDir();
 
   const engineDirs: Array<{ dir: string; engine: 'claude' | 'codex' | 'gemini' }> = [
     { dir: path.join(workspace, '.claude', 'skills'), engine: 'claude' },
@@ -547,9 +547,9 @@ export function detectEngineNativeSkills(workspace: string): EngineNativeSkill[]
 
       const entryPath = path.join(dir, entry.name);
 
-      // Skip AionUi-managed entries (symlinks or copies with provenance marker)
-      if (isAionUiManagedSymlink(entryPath, aionuiSkillsDir)) continue;
-      if (isAionUiManagedCopy(entry.name, manifest, entryPath)) continue;
+      // Skip Margay-managed entries (symlinks or copies with provenance marker)
+      if (isMargayManagedSymlink(entryPath, margaySkillsDir)) continue;
+      if (isMargayManagedCopy(entry.name, manifest, entryPath)) continue;
 
       results.push({
         name: entry.name,
@@ -574,7 +574,7 @@ export type GlobalSkill = {
 
 /**
  * Detect skills installed at global (home directory) engine paths.
- * These are read-only from AionUi's perspective — users or agents installed
+ * These are read-only from Margay's perspective — users or agents installed
  * them directly at ~/.claude/skills/ or ~/.gemini/skills/.
  *
  * Unlike engine-native skills (workspace-scoped), global skills persist

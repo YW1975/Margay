@@ -1,10 +1,10 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 Margay
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { AIONUI_TIMESTAMP_SEPARATOR } from '@/common/constants';
+import { MARGAY_TIMESTAMP_SEPARATOR } from '@/common/constants';
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
@@ -318,7 +318,7 @@ export function initFsBridge(): void {
         const timestamp = Date.now();
         const ext = path.extname(safeFileName);
         const name = path.basename(safeFileName, ext);
-        const tempFileName = `${name}${AIONUI_TIMESTAMP_SEPARATOR}${timestamp}${ext}`;
+        const tempFileName = `${name}${MARGAY_TIMESTAMP_SEPARATOR}${timestamp}${ext}`;
         tempFilePath = path.join(tempDir, tempFileName);
       }
 
@@ -475,7 +475,7 @@ export function initFsBridge(): void {
             const name = path.basename(targetPath, ext);
             // Construct new path in the same directory / 在同一目录下构建新路径
             const dir = path.dirname(targetPath);
-            const newFileName = `${name}${AIONUI_TIMESTAMP_SEPARATOR}${timestamp}${ext}`;
+            const newFileName = `${name}${MARGAY_TIMESTAMP_SEPARATOR}${timestamp}${ext}`;
             finalTargetPath = path.join(dir, newFileName);
           }
 
@@ -631,7 +631,7 @@ export function initFsBridge(): void {
   });
 
   // 获取可用 skills 列表 / List available skills from unified flat directory
-  // Rev 4: single directory scan with .aionui-skill.json metadata for builtin classification
+  // Rev 4: single directory scan with .margay-skill.json metadata for builtin classification
   ipcBridge.fs.listAvailableSkills.provider(async () => {
     try {
       const skills: Array<{ name: string; description: string; location: string; isCustom: boolean }> = [];
@@ -660,11 +660,11 @@ export function initFsBridge(): void {
               if (nameMatch) {
                 // Check metadata for builtin classification
                 let isBuiltin = false;
-                const metadataPath = path.join(skillDir, '.aionui-skill.json');
+                const metadataPath = path.join(skillDir, '.margay-skill.json');
                 try {
                   const metaRaw = await fs.readFile(metadataPath, 'utf-8');
                   const meta = JSON.parse(metaRaw);
-                  if (meta?.managedBy === 'aionui' && meta.builtin === true) {
+                  if (meta?.managedBy === 'margay' && meta.builtin === true) {
                     isBuiltin = true;
                   }
                 } catch {
@@ -787,9 +787,9 @@ export function initFsBridge(): void {
         // Check if it's a builtin skill via metadata
         let isBuiltin = false;
         try {
-          const metaRaw = await fs.readFile(path.join(targetDir, '.aionui-skill.json'), 'utf-8');
+          const metaRaw = await fs.readFile(path.join(targetDir, '.margay-skill.json'), 'utf-8');
           const meta = JSON.parse(metaRaw);
-          isBuiltin = meta?.managedBy === 'aionui' && meta.builtin === true;
+          isBuiltin = meta?.managedBy === 'margay' && meta.builtin === true;
         } catch {
           // No metadata
         }
@@ -934,7 +934,7 @@ export function initFsBridge(): void {
     }
   });
 
-  // 检测引擎目录中非 AionUi 管理的 skills / Detect engine-native skills not managed by AionUi
+  // 检测引擎目录中非 Margay 管理的 skills / Detect engine-native skills not managed by Margay
   ipcBridge.fs.detectEngineNativeSkills.provider(({ workspace }) => {
     try {
       const skills = detectEngineNativeSkills(workspace);

@@ -71,43 +71,43 @@ body[arco-theme='dark'] .arco-tag-checked.arco-tag-gray {
   color: rgb(209, 213, 219) !important;
 }
 
-/* AionUi Steps wrapper styles */
-.aionui-steps .arco-steps-item-process .arco-steps-item-icon {
+/* Margay Steps wrapper styles */
+.margay-steps .arco-steps-item-process .arco-steps-item-icon {
   background-color: var(--aou-6-brand) !important;
   border-color: var(--aou-6-brand) !important;
 }
 
-.aionui-steps .arco-steps-item-finish .arco-steps-item-icon {
+.margay-steps .arco-steps-item-finish .arco-steps-item-icon {
   background-color: #e8f3ff !important;
   border-color: #e8f3ff !important;
   border-radius: 50% !important;
 }
 
-.aionui-steps .arco-steps-item-finish .arco-steps-item-icon .arco-steps-icon {
+.margay-steps .arco-steps-item-finish .arco-steps-item-icon .arco-steps-icon {
   line-height: 28px !important;
 }
 
-/* AionUi Modal wrapper styles */
-.aionui-modal .arco-modal-content {
+/* Margay Modal wrapper styles */
+.margay-modal .arco-modal-content {
   background: var(--bg-1) !important;
   border-radius: 12px !important;
 }
 
-.aionui-modal-header {
+.margay-modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 20px 24px 16px;
 }
 
-.aionui-modal-title {
+.margay-modal-title {
   font-size: 18px;
   font-weight: 500;
   color: var(--text-t-primary);
   margin: 0;
 }
 
-.aionui-modal-close-btn {
+.margay-modal-close-btn {
   width: 32px;
   height: 32px;
   display: flex;
@@ -121,7 +121,7 @@ body[arco-theme='dark'] .arco-tag-checked.arco-tag-gray {
   padding: 0;
 }
 
-.aionui-modal-close-btn:hover {
+.margay-modal-close-btn:hover {
   background: var(--fill-2);
 }
 

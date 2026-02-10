@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 Margay
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -15,13 +15,13 @@ import React from 'react';
  */
 type NativeSelectProps = Omit<SelectProps, 'size'>;
 type NativeSelectSize = NonNullable<SelectProps['size']>;
-type AionSelectSize = NativeSelectSize | 'middle';
+type MargaySelectSize = NativeSelectSize | 'middle';
 
-export interface AionSelectProps extends NativeSelectProps {
+export interface MargaySelectProps extends NativeSelectProps {
   /** 额外的类名 / Additional class name */
   className?: string;
   /** 统一尺寸，新增 middle（32px）/ Unified size with additional "middle" (32px) */
-  size?: AionSelectSize;
+  size?: MargaySelectSize;
 }
 
 /**
@@ -63,52 +63,52 @@ const defaultGetPopupContainer = (): HTMLElement => {
  * @example
  * ```tsx
  * // 基本用法 / Basic usage
- * <AionSelect placeholder="请选择" style={{ width: 200 }}>
- *   <AionSelect.Option value="1">选项1</AionSelect.Option>
- *   <AionSelect.Option value="2">选项2</AionSelect.Option>
- * </AionSelect>
+ * <MargaySelect placeholder="请选择" style={{ width: 200 }}>
+ *   <MargaySelect.Option value="1">选项1</MargaySelect.Option>
+ *   <MargaySelect.Option value="2">选项2</MargaySelect.Option>
+ * </MargaySelect>
  *
  * // 多选 / Multiple selection
- * <AionSelect mode="multiple" placeholder="请选择多个">
- *   <AionSelect.Option value="1">选项1</AionSelect.Option>
- *   <AionSelect.Option value="2">选项2</AionSelect.Option>
- * </AionSelect>
+ * <MargaySelect mode="multiple" placeholder="请选择多个">
+ *   <MargaySelect.Option value="1">选项1</MargaySelect.Option>
+ *   <MargaySelect.Option value="2">选项2</MargaySelect.Option>
+ * </MargaySelect>
  *
  * // 分组 / Grouped options
- * <AionSelect placeholder="请选择">
- *   <AionSelect.OptGroup label="分组1">
- *     <AionSelect.Option value="1">选项1</AionSelect.Option>
- *   </AionSelect.OptGroup>
- *   <AionSelect.OptGroup label="分组2">
- *     <AionSelect.Option value="2">选项2</AionSelect.Option>
- *   </AionSelect.OptGroup>
- * </AionSelect>
+ * <MargaySelect placeholder="请选择">
+ *   <MargaySelect.OptGroup label="分组1">
+ *     <MargaySelect.Option value="1">选项1</MargaySelect.Option>
+ *   </MargaySelect.OptGroup>
+ *   <MargaySelect.OptGroup label="分组2">
+ *     <MargaySelect.Option value="2">选项2</MargaySelect.Option>
+ *   </MargaySelect.OptGroup>
+ * </MargaySelect>
  * ```
  *
  * @see arco-override.css for theme-related styles (.aion-select)
  */
-const mapSizeToNative = (size?: AionSelectSize): NativeSelectSize | undefined => {
+const mapSizeToNative = (size?: MargaySelectSize): NativeSelectSize | undefined => {
   if (!size) return undefined;
   if (size === 'middle') return 'default';
   return size;
 };
 
-type AionSelectComponent = React.ForwardRefExoticComponent<AionSelectProps & React.RefAttributes<SelectHandle>> & {
+type MargaySelectComponent = React.ForwardRefExoticComponent<MargaySelectProps & React.RefAttributes<SelectHandle>> & {
   Option: typeof Select.Option;
   OptGroup: typeof Select.OptGroup;
 };
 
-const InternalSelect = React.forwardRef<SelectHandle, AionSelectProps>(({ className, getPopupContainer, size = 'middle', ...rest }, ref) => {
+const InternalSelect = React.forwardRef<SelectHandle, MargaySelectProps>(({ className, getPopupContainer, size = 'middle', ...rest }, ref) => {
   const normalizedSize = mapSizeToNative(size);
   return <Select ref={ref} size={normalizedSize} className={classNames(BASE_CLASS, className)} getPopupContainer={getPopupContainer || defaultGetPopupContainer} {...rest} />;
 });
 
-const AionSelect = InternalSelect as AionSelectComponent;
+const MargaySelect = InternalSelect as MargaySelectComponent;
 
-AionSelect.displayName = 'AionSelect';
+MargaySelect.displayName = 'MargaySelect';
 
 // 导出子组件 / Export sub-components
-AionSelect.Option = Select.Option;
-AionSelect.OptGroup = Select.OptGroup;
+MargaySelect.Option = Select.Option;
+MargaySelect.OptGroup = Select.OptGroup;
 
-export default AionSelect;
+export default MargaySelect;

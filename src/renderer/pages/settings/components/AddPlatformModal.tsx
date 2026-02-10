@@ -9,7 +9,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import useModeModeList from '../../../hooks/useModeModeList';
 import useProtocolDetection from '../../../hooks/useProtocolDetection';
-import AionModal from '@/renderer/components/base/AionModal';
+import MargayModal from '@/renderer/components/base/MargayModal';
 import ApiKeyEditorModal from './ApiKeyEditorModal';
 import ProtocolDetectionStatus from './ProtocolDetectionStatus';
 import { MODEL_PLATFORMS, getPlatformByValue, isCustomOption, isGeminiPlatform, type PlatformConfig } from '@/renderer/config/modelPlatforms';
@@ -162,7 +162,7 @@ const AddPlatformModal = ModalHOC<{
   };
 
   return (
-    <AionModal visible={modalProps.visible} onCancel={modalCtrl.close} header={{ title: t('settings.addModel'), showClose: true }} style={{ maxWidth: '92vw', borderRadius: 16 }} contentStyle={{ background: 'var(--bg-1)', borderRadius: 16, padding: '20px 24px 16px', overflow: 'auto' }} onOk={handleSubmit} confirmLoading={modalProps.confirmLoading} okText={t('common.confirm')} cancelText={t('common.cancel')}>
+    <MargayModal visible={modalProps.visible} onCancel={modalCtrl.close} header={{ title: t('settings.addModel'), showClose: true }} style={{ maxWidth: '92vw', borderRadius: 16 }} contentStyle={{ background: 'var(--bg-1)', borderRadius: 16, padding: '20px 24px 16px', overflow: 'auto' }} onOk={handleSubmit} confirmLoading={modalProps.confirmLoading} okText={t('common.confirm')} cancelText={t('common.cancel')}>
       {messageContext}
       <div className='flex flex-col gap-16px py-20px'>
         <Form form={form} layout='vertical' className='space-y-0'>
@@ -280,7 +280,7 @@ const AddPlatformModal = ModalHOC<{
           }
         }}
       />
-    </AionModal>
+    </MargayModal>
   );
 });
 

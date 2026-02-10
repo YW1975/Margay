@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import CodeMirror from '@uiw/react-codemirror';
 import { json } from '@codemirror/lang-json';
 import { useThemeContext } from '@/renderer/context/ThemeContext';
-import AionModal from '@/renderer/components/base/AionModal';
+import MargayModal from '@/renderer/components/base/MargayModal';
 
 interface JsonImportModalProps {
   visible: boolean;
@@ -190,7 +190,7 @@ const JsonImportModal: React.FC<JsonImportModalProps> = ({ visible, server, onCa
   if (!visible) return null;
 
   return (
-    <AionModal
+    <MargayModal
       visible={visible}
       onCancel={onCancel}
       onOk={handleSubmit}
@@ -295,7 +295,7 @@ const JsonImportModal: React.FC<JsonImportModalProps> = ({ visible, server, onCa
           }
         />
       </div>
-    </AionModal>
+    </MargayModal>
   );
 };
 

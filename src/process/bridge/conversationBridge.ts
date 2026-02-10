@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 Margay
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -24,7 +24,7 @@ export function initConversationBridge(): void {
     // 使用 ConversationService 创建会话 / Use ConversationService to create conversation
     const result = await ConversationService.createConversation({
       ...params,
-      source: 'aionui', // AionUI 创建的会话标记为 aionui / Mark conversations created by AionUI as aionui
+      source: 'margay', // Mark conversations created by Margay
     });
 
     if (!result.success || !result.conversation) {
@@ -193,9 +193,9 @@ export function initConversationBridge(): void {
         // Continue with deletion even if cron cleanup fails
       }
 
-      // If source is not 'aionui' (e.g., telegram), cleanup channel resources
-      // 如果来源不是 aionui（如 telegram），需要清理 channel 相关资源
-      if (source && source !== 'aionui') {
+      // If source is not 'margay' (e.g., telegram), cleanup channel resources
+      // 如果来源不是 margay（如 telegram），需要清理 channel 相关资源
+      if (source && source !== 'margay') {
         try {
           // Dynamic import to avoid circular dependency
           const { getChannelManager } = await import('@/channels/core/ChannelManager');

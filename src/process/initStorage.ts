@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 Margay
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -23,10 +23,10 @@ type ArchitectureType = 'x64' | 'arm64' | 'ia32' | 'arm';
 const nodePath = path;
 
 const STORAGE_PATH = {
-  config: 'aionui-config.txt',
-  chatMessage: 'aionui-chat-message.txt',
-  chat: 'aionui-chat.txt',
-  env: '.aionui-env',
+  config: 'margay-config.txt',
+  chatMessage: 'margay-chat-message.txt',
+  chat: 'margay-chat.txt',
+  env: '.margay-env',
   assistants: 'assistants',
   skills: 'skills',
 };
@@ -52,7 +52,7 @@ const migrateLegacyData = async () => {
         try {
           return existsSync(newDir) && readdirSync(newDir).length === 0;
         } catch (error) {
-          console.warn('[AionUi] Warning: Could not read new directory during migration check:', error);
+          console.warn('[Margay] Warning: Could not read new directory during migration check:', error);
           return false; // 假设非空以避免迁移覆盖
         }
       })();
@@ -73,7 +73,7 @@ const migrateLegacyData = async () => {
           try {
             await fs.rm(oldDir, { recursive: true });
           } catch (cleanupError) {
-            console.warn('[AionUi] 原目录清理失败，请手动删除:', oldDir, cleanupError);
+            console.warn('[Margay] 原目录清理失败，请手动删除:', oldDir, cleanupError);
           }
         }
       }
@@ -81,7 +81,7 @@ const migrateLegacyData = async () => {
       return true;
     }
   } catch (error) {
-    console.error('[AionUi] 数据迁移失败:', error);
+    console.error('[Margay] 数据迁移失败:', error);
   }
 
   return false;
@@ -247,7 +247,7 @@ const JsonFileBuilder = <S extends object = Record<string, unknown>>(path: strin
 
 const envFile = JsonFileBuilder<IEnvStorageRefer>(path.join(getHomePage(), STORAGE_PATH.env));
 
-const dirConfig = envFile.getSync('aionui.dir');
+const dirConfig = envFile.getSync('margay.dir');
 
 const cacheDir = dirConfig?.cacheDir || getHomePage();
 
@@ -293,11 +293,11 @@ const chatFile = {
 };
 
 const buildMessageListStorage = (conversation_id: string, dir: string) => {
-  const fullName = path.join(dir, 'aionui-chat-history', conversation_id + '.txt');
+  const fullName = path.join(dir, 'margay-chat-history', conversation_id + '.txt');
   if (!existsSync(fullName)) {
-    mkdirSync(path.join(dir, 'aionui-chat-history'));
+    mkdirSync(path.join(dir, 'margay-chat-history'));
   }
-  return JsonFileBuilder<TMessage[]>(path.join(dir, 'aionui-chat-history', conversation_id + '.txt'));
+  return JsonFileBuilder<TMessage[]>(path.join(dir, 'margay-chat-history', conversation_id + '.txt'));
 };
 
 const conversationHistoryProxy = (options: typeof _chatMessageFile, dir: string) => {
@@ -317,7 +317,7 @@ const conversationHistoryProxy = (options: typeof _chatMessageFile, dir: string)
     },
     backup(conversation_id: string) {
       const storage = buildMessageListStorage(conversation_id, dir);
-      return storage.backup(path.join(dir, 'aionui-chat-history', 'backup', conversation_id + '_' + Date.now() + '.txt'));
+      return storage.backup(path.join(dir, 'margay-chat-history', 'backup', conversation_id + '_' + Date.now() + '.txt'));
     },
   };
 };
@@ -372,7 +372,7 @@ const initBuiltinAssistantRules = async (): Promise<void> => {
       }
     }
 
-    console.warn(`[AionUi] Could not find builtin ${dirPath} directory, tried:`, candidates);
+    console.warn(`[Margay] Could not find builtin ${dirPath} directory, tried:`, candidates);
     return candidates[0];
   };
 
@@ -380,7 +380,7 @@ const initBuiltinAssistantRules = async (): Promise<void> => {
   const builtinSkillsDir = resolveBuiltinDir('skills');
   const userSkillsDir = getSkillsDir();
 
-  console.log(`[AionUi] initBuiltinAssistantRules: rulesDir=${rulesDir}, builtinSkillsDir=${builtinSkillsDir}, userSkillsDir=${userSkillsDir}, assistantsDir=${assistantsDir}`);
+  console.log(`[Margay] initBuiltinAssistantRules: rulesDir=${rulesDir}, builtinSkillsDir=${builtinSkillsDir}, userSkillsDir=${userSkillsDir}, assistantsDir=${assistantsDir}`);
 
   // 复制技能脚本目录到用户配置目录
   // Copy skills scripts directory to user config directory
@@ -392,13 +392,13 @@ const initBuiltinAssistantRules = async (): Promise<void> => {
       }
       // 复制内置技能到用户目录（不覆盖已存在的文件）
       await copyDirectoryRecursively(builtinSkillsDir, userSkillsDir, { overwrite: false });
-      console.log(`[AionUi] Skills directory initialized: ${userSkillsDir}`);
+      console.log(`[Margay] Skills directory initialized: ${userSkillsDir}`);
     } catch (error) {
-      console.warn(`[AionUi] Failed to copy skills directory:`, error);
+      console.warn(`[Margay] Failed to copy skills directory:`, error);
     }
   }
 
-  // Rev 4 migration: flatten _builtin/ to top-level with .aionui-skill.json metadata
+  // Rev 4 migration: flatten _builtin/ to top-level with .margay-skill.json metadata
   const legacyBuiltinDir = path.join(userSkillsDir, '_builtin');
   if (existsSync(legacyBuiltinDir)) {
     try {
@@ -411,23 +411,23 @@ const initBuiltinAssistantRules = async (): Promise<void> => {
           cpSync(sourcePath, targetPath, { recursive: true });
         }
         // Write metadata marking as builtin
-        const metadataPath = path.join(targetPath, '.aionui-skill.json');
+        const metadataPath = path.join(targetPath, '.margay-skill.json');
         if (!existsSync(metadataPath)) {
-          writeFileSync(metadataPath, JSON.stringify({ managedBy: 'aionui', builtin: true, sourceDir: targetPath }, null, 2), 'utf-8');
+          writeFileSync(metadataPath, JSON.stringify({ managedBy: 'margay', builtin: true, sourceDir: targetPath }, null, 2), 'utf-8');
         }
       }
       // Remove legacy _builtin/ directory
       rmSync(legacyBuiltinDir, { recursive: true, force: true });
-      console.log(`[AionUi] Migrated _builtin/ skills to flat storage`);
+      console.log(`[Margay] Migrated _builtin/ skills to flat storage`);
     } catch (error) {
-      console.warn(`[AionUi] Failed to migrate _builtin/ skills:`, error);
+      console.warn(`[Margay] Failed to migrate _builtin/ skills:`, error);
     }
   }
 
   // 确保助手目录存在 / Ensure assistants directory exists
   if (!existsSync(assistantsDir)) {
     mkdirSync(assistantsDir);
-    console.log(`[AionUi] Created assistants directory: ${assistantsDir}`);
+    console.log(`[Margay] Created assistants directory: ${assistantsDir}`);
   }
 
   for (const preset of ASSISTANT_PRESETS) {
@@ -451,7 +451,7 @@ const initBuiltinAssistantRules = async (): Promise<void> => {
 
           // 检查源文件是否存在 / Check if source file exists
           if (!existsSync(sourceRulesPath)) {
-            console.warn(`[AionUi] Source rule file not found: ${sourceRulesPath}`);
+            console.warn(`[Margay] Source rule file not found: ${sourceRulesPath}`);
             continue;
           }
 
@@ -462,10 +462,10 @@ const initBuiltinAssistantRules = async (): Promise<void> => {
           // Replace relative paths with absolute paths so AI can find scripts correctly
           content = content.replace(/skills\//g, userSkillsDir + '/');
           await fs.writeFile(targetPath, content, 'utf-8');
-          console.log(`[AionUi] Updated builtin rule: ${targetFileName}`);
+          console.log(`[Margay] Updated builtin rule: ${targetFileName}`);
         } catch (error) {
           // 忽略缺失的语言文件 / Ignore missing locale files
-          console.warn(`[AionUi] Failed to copy rule file ${ruleFile}:`, error);
+          console.warn(`[Margay] Failed to copy rule file ${ruleFile}:`, error);
         }
       }
     } else {
@@ -478,7 +478,7 @@ const initBuiltinAssistantRules = async (): Promise<void> => {
           if (rulesFilePattern.test(file)) {
             const filePath = path.join(assistantsDir, file);
             await fs.unlink(filePath);
-            console.log(`[AionUi] Removed deprecated rule file: ${file}`);
+            console.log(`[Margay] Removed deprecated rule file: ${file}`);
           }
         }
       } catch (error) {
@@ -498,7 +498,7 @@ const initBuiltinAssistantRules = async (): Promise<void> => {
 
           // 检查源文件是否存在 / Check if source file exists
           if (!existsSync(sourceSkillsPath)) {
-            console.warn(`[AionUi] Source skill file not found: ${sourceSkillsPath}`);
+            console.warn(`[Margay] Source skill file not found: ${sourceSkillsPath}`);
             continue;
           }
 
@@ -509,10 +509,10 @@ const initBuiltinAssistantRules = async (): Promise<void> => {
           // Replace relative paths with absolute paths so AI can find scripts correctly
           content = content.replace(/skills\//g, userSkillsDir + '/');
           await fs.writeFile(targetPath, content, 'utf-8');
-          console.log(`[AionUi] Updated builtin skill: ${targetFileName}`);
+          console.log(`[Margay] Updated builtin skill: ${targetFileName}`);
         } catch (error) {
           // 忽略缺失的技能文件 / Ignore missing skill files
-          console.warn(`[AionUi] Failed to copy skill file ${skillFile}:`, error);
+          console.warn(`[Margay] Failed to copy skill file ${skillFile}:`, error);
         }
       }
     } else {
@@ -527,7 +527,7 @@ const initBuiltinAssistantRules = async (): Promise<void> => {
           if (skillsFilePattern.test(file)) {
             const filePath = path.join(assistantsDir, file);
             await fs.unlink(filePath);
-            console.log(`[AionUi] Removed deprecated skill file: ${file}`);
+            console.log(`[Margay] Removed deprecated skill file: ${file}`);
           }
         }
       } catch (error) {
@@ -603,7 +603,7 @@ const getDefaultMcpServers = (): IMcpServer[] => {
 };
 
 const initStorage = async () => {
-  console.log('[AionUi] Starting storage initialization...');
+  console.log('[Margay] Starting storage initialization...');
 
   // 1. 先执行数据迁移（在任何目录创建之前）
   await migrateLegacyData();
@@ -630,10 +630,10 @@ const initStorage = async () => {
     if (!existingMcpConfig || !Array.isArray(existingMcpConfig) || existingMcpConfig.length === 0) {
       const defaultServers = getDefaultMcpServers();
       await configFile.set('mcp.config', defaultServers);
-      console.log('[AionUi] Default MCP servers initialized');
+      console.log('[Margay] Default MCP servers initialized');
     }
   } catch (error) {
-    console.error('[AionUi] Failed to initialize default MCP servers:', error);
+    console.error('[Margay] Failed to initialize default MCP servers:', error);
   }
   // 5. 初始化内置助手（Assistants）
   try {
@@ -718,14 +718,14 @@ const initStorage = async () => {
     // 标记迁移完成 / Mark migration as done
     if (needsMigration) {
       await configFile.set(ASSISTANT_ENABLED_MIGRATION_KEY, true);
-      console.log('[AionUi] Assistant enabled migration completed');
+      console.log('[Margay] Assistant enabled migration completed');
     }
     if (needsBuiltinSkillsMigration) {
       await configFile.set(BUILTIN_SKILLS_MIGRATION_KEY, true);
-      console.log('[AionUi] Builtin assistants default skills migration completed');
+      console.log('[Margay] Builtin assistants default skills migration completed');
     }
   } catch (error) {
-    console.error('[AionUi] Failed to initialize builtin assistants:', error);
+    console.error('[Margay] Failed to initialize builtin assistants:', error);
   }
 
   // 6. 初始化数据库（better-sqlite3）

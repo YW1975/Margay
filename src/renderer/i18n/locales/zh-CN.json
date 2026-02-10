@@ -779,7 +779,7 @@
     "engineNativeSkills": "检测到的技能",
     "engineNativeDescription": "由代理在引擎目录中创建的技能，不受 Margay 管理。",
     "noEngineNativeSkills": "未检测到引擎原生技能。代理创建的技能将显示在此处。",
-    "importToAionUi": "导入",
+    "importToMargay": "导入",
     "noSkillMd": "缺少 SKILL.md — 无法导入",
     "globalSkills": "全局技能",
     "globalSkillsDescription": "安装在主目录级别的技能（~/.claude/skills/、~/.gemini/skills/）。只读。",

@@ -791,7 +791,7 @@
     "engineNativeSkills": "Algılanan Yetenekler",
     "engineNativeDescription": "Motorların dizinlerinde ajanlar tarafından oluşturulan yetenekler, Margay tarafından yönetilmez.",
     "noEngineNativeSkills": "Motor yerel yeteneği algılanmadı. Ajanlar tarafından oluşturulan yetenekler burada görünecektir.",
-    "importToAionUi": "İçe Aktar",
+    "importToMargay": "İçe Aktar",
     "noSkillMd": "SKILL.md eksik — içe aktarılamaz",
     "globalSkills": "Global Yetenekler",
     "globalSkillsDescription": "Ana dizin düzeyinde yüklü yetenekler (~/.claude/skills/, ~/.gemini/skills/). Salt okunur.",

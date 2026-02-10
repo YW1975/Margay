@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 Margay
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -254,7 +254,7 @@ const SkillsManagement: React.FC = () => {
       {/* Engine-Native Skills Section */}
       <Collapse defaultActiveKey={['engine-native-skills']}>
         <Collapse.Item header={<span className='text-13px font-medium'>{t('settings.engineNativeSkills', { defaultValue: 'Detected Skills' })}</span>} name='engine-native-skills' extra={<span className='text-12px text-t-secondary'>{engineNativeSkills.length}</span>}>
-          <div className='text-12px color-#86909C mb-8px'>{t('settings.engineNativeDescription', { defaultValue: 'Skills created by agents in engine directories, not managed by AionUi.' })}</div>
+          <div className='text-12px color-#86909C mb-8px'>{t('settings.engineNativeDescription', { defaultValue: 'Skills created by agents in engine directories, not managed by Margay.' })}</div>
           {engineNativeSkills.length > 0 ? (
             <div className='space-y-4px'>
               {engineNativeSkills.map((skill) => (
@@ -278,7 +278,7 @@ const SkillsManagement: React.FC = () => {
                     {!skill.hasSkillMd && <div className='text-11px color-#F59E0B mt-2px'>{t('settings.noSkillMd', { defaultValue: 'Missing SKILL.md — cannot import' })}</div>}
                   </div>
                   <Button size='mini' type='outline' disabled={!skill.hasSkillMd || importingSkill === skill.name} loading={importingSkill === skill.name} onClick={() => void handleImportEngineNative(skill)}>
-                    {t('settings.importToAionUi', { defaultValue: 'Import' })}
+                    {t('settings.importToMargay', { defaultValue: 'Import' })}
                   </Button>
                 </div>
               ))}

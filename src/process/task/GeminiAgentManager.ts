@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 Margay
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -137,8 +137,8 @@ export class GeminiAgentManager extends BaseAgentManager<
           // If account retrieval fails, don't set projectId, let system use default
         }
 
-        // Distribute AionUi skills to Gemini workspace discovery dir (bootstrap-only)
-        // 在 bootstrap 时将 AionUi skills 分发到 Gemini 工作空间发现目录
+        // Distribute Margay skills to Gemini workspace discovery dir (bootstrap-only)
+        // 在 bootstrap 时将 Margay skills 分发到 Gemini 工作空间发现目录
         distributeForGemini(this.workspace, this.enabledSkills);
 
         // Convert enabledSkills (preset whitelist) to disabledSkills (aioncli-core native blacklist)

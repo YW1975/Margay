@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 Margay
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -16,7 +16,7 @@ import { transformMessage } from '@/common/chatLib';
 import type { CodexAgentManagerData, FileChange } from '@/common/codex/types';
 import { PERMISSION_DECISION_MAP } from '@/common/codex/types/permissionTypes';
 import { mapPermissionDecision } from '@/common/codex/utils';
-import { AIONUI_FILES_MARKER } from '@/common/constants';
+import { MARGAY_FILES_MARKER } from '@/common/constants';
 import type { IResponseMessage } from '@/common/ipcBridge';
 import { uuid } from '@/common/utils';
 import { addMessage, addOrUpdateMessage } from '@process/message';
@@ -90,8 +90,8 @@ class CodexAgentManager extends BaseAgentManager<CodexAgentManagerData> implemen
       const codexConfig = await ProcessConfig.get('codex.config');
       const yoloMode = data.yoloMode ?? codexConfig?.yoloMode;
 
-      // Distribute AionUi skills to Codex discovery dir before agent starts
-      // 在 agent 启动前将 AionUi skills 分发到 Codex 发现目录
+      // Distribute Margay skills to Codex discovery dir before agent starts
+      // 在 agent 启动前将 Margay skills 分发到 Codex 发现目录
       const codexWorkspace = data.workspace || process.cwd();
       distributeForCodex(codexWorkspace, data.enabledSkills);
 
@@ -177,7 +177,7 @@ class CodexAgentManager extends BaseAgentManager<CodexAgentManagerData> implemen
     cronBusyGuard.setProcessing(this.conversation_id, true);
     try {
       await this.bootstrap;
-      const contentToSend = data.content?.includes(AIONUI_FILES_MARKER) ? data.content.split(AIONUI_FILES_MARKER)[0].trimEnd() : data.content;
+      const contentToSend = data.content?.includes(MARGAY_FILES_MARKER) ? data.content.split(MARGAY_FILES_MARKER)[0].trimEnd() : data.content;
 
       // Save user message to chat history only (renderer already inserts right-hand bubble)
       if (data.msg_id && data.content) {

@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 Margay
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -106,7 +106,7 @@ const pickRecommendedAsset = (assets: GitHubReleaseAsset[]): GitHubReleaseAsset 
 };
 
 const resolveRepo = (requestRepo?: string): string => {
-  const envRepo = (process.env.MARGAY_GITHUB_REPO || process.env.AIONUI_GITHUB_REPO)?.trim();
+  const envRepo = process.env.MARGAY_GITHUB_REPO?.trim();
   const repo = (requestRepo || envRepo || DEFAULT_REPO).trim();
   return repo || DEFAULT_REPO;
 };

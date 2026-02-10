@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 Margay
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -10,7 +10,7 @@ import { channel } from '@/common/ipcBridge';
 import type { IProvider, TProviderWithModel } from '@/common/storage';
 import { ConfigStorage } from '@/common/storage';
 import { uuid } from '@/common/utils';
-import AionScrollArea from '@/renderer/components/base/AionScrollArea';
+import MargayScrollArea from '@/renderer/components/base/MargayScrollArea';
 import { useGeminiGoogleAuthModels } from '@/renderer/hooks/useGeminiGoogleAuthModels';
 import { hasSpecificModelCapability } from '@/renderer/utils/modelCapabilities';
 import { Message } from '@arco-design/web-react';
@@ -327,13 +327,13 @@ const ChannelModalContent: React.FC = () => {
   };
 
   return (
-    <AionScrollArea className={isPageMode ? 'h-full' : ''}>
+    <MargayScrollArea className={isPageMode ? 'h-full' : ''}>
       <div className='flex flex-col gap-12px'>
         {channels.map((channelConfig) => (
           <ChannelItem key={channelConfig.id} channel={channelConfig} isCollapsed={collapseKeys[channelConfig.id] || false} onToggleCollapse={() => handleToggleCollapse(channelConfig.id)} onToggleEnabled={getToggleHandler(channelConfig.id)} />
         ))}
       </div>
-    </AionScrollArea>
+    </MargayScrollArea>
   );
 };
 

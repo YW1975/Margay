@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 Margay
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -10,7 +10,7 @@ import path from 'path';
 import os from 'os';
 
 // --- Mock initStorage before importing SkillDistributor ---
-const testRoot = path.join(os.tmpdir(), `aionui-skill-test-${process.pid}`);
+const testRoot = path.join(os.tmpdir(), `margay-skill-test-${process.pid}`);
 const mockSkillsDir = path.join(testRoot, 'skills');
 const mockBuiltinDir = path.join(testRoot, 'skills', '_builtin');
 
@@ -69,7 +69,7 @@ describe('SkillDistributor', () => {
     });
   });
 
-  describe('skill metadata — .aionui-skill.json read/write', () => {
+  describe('skill metadata — .margay-skill.json read/write', () => {
     beforeEach(() => {
       cleanTestRoot();
       mkdirSync(mockSkillsDir, { recursive: true });
@@ -88,7 +88,7 @@ describe('SkillDistributor', () => {
       expect(existsSync(metaPath)).toBe(true);
 
       const content = JSON.parse(readFileSync(metaPath, 'utf-8'));
-      expect(content.managedBy).toBe('aionui');
+      expect(content.managedBy).toBe('margay');
       expect(content.builtin).toBe(true);
     });
 
@@ -99,7 +99,7 @@ describe('SkillDistributor', () => {
 
       const meta = readSkillMetadata(dir);
       expect(meta).not.toBeNull();
-      expect(meta!.managedBy).toBe('aionui');
+      expect(meta!.managedBy).toBe('margay');
       expect(meta!.builtin).toBe(false);
     });
 
@@ -212,7 +212,7 @@ describe('SkillDistributor', () => {
     it('hasProvenanceMarker returns true for directory with marker', () => {
       const dir = path.join(testRoot, 'with-marker');
       mkdirSync(dir, { recursive: true });
-      writeFileSync(path.join(dir, PROVENANCE_MARKER), 'managed-by-aionui\n');
+      writeFileSync(path.join(dir, PROVENANCE_MARKER), 'managed-by-margay\n');
       expect(hasProvenanceMarker(dir)).toBe(true);
     });
 
@@ -225,9 +225,9 @@ describe('SkillDistributor', () => {
       writeFileSync(path.join(enginePptx, 'SKILL.md'), '# Engine pptx');
       writeFileSync(path.join(enginePptx, 'custom-engine-file.txt'), 'engine content');
 
-      // Write a stale manifest that claims "pptx" is AionUi-managed
-      const manifest = { managedBy: 'aionui', skills: ['pptx'] };
-      writeFileSync(path.join(targetDir, '.aionui-manifest.json'), JSON.stringify(manifest));
+      // Write a stale manifest that claims "pptx" is Margay-managed
+      const manifest = { managedBy: 'margay', skills: ['pptx'] };
+      writeFileSync(path.join(targetDir, '.margay-manifest.json'), JSON.stringify(manifest));
 
       // Run distribution — "pptx" should be SKIPPED because no provenance marker
       const workspace = path.join(testRoot, 'target-engine');
@@ -237,18 +237,18 @@ describe('SkillDistributor', () => {
       expect(existsSync(path.join(enginePptx, 'custom-engine-file.txt'))).toBe(true);
     });
 
-    it('AionUi-managed copy (with marker) IS updated during distribution', () => {
+    it('Margay-managed copy (with marker) IS updated during distribution', () => {
       mkdirSync(targetDir, { recursive: true });
 
-      // Create an AionUi-managed "pptx" directory WITH provenance marker
-      const aionuiPptx = path.join(targetDir, 'pptx');
-      mkdirSync(aionuiPptx, { recursive: true });
-      writeFileSync(path.join(aionuiPptx, 'SKILL.md'), '# Old AionUi pptx');
-      writeFileSync(path.join(aionuiPptx, PROVENANCE_MARKER), 'managed-by-aionui\n');
+      // Create an Margay-managed "pptx" directory WITH provenance marker
+      const margayPptx = path.join(targetDir, 'pptx');
+      mkdirSync(margayPptx, { recursive: true });
+      writeFileSync(path.join(margayPptx, 'SKILL.md'), '# Old Margay pptx');
+      writeFileSync(path.join(margayPptx, PROVENANCE_MARKER), 'managed-by-margay\n');
 
       // Write manifest that lists "pptx"
-      const manifest = { managedBy: 'aionui', skills: ['pptx'] };
-      writeFileSync(path.join(targetDir, '.aionui-manifest.json'), JSON.stringify(manifest));
+      const manifest = { managedBy: 'margay', skills: ['pptx'] };
+      writeFileSync(path.join(targetDir, '.margay-manifest.json'), JSON.stringify(manifest));
 
       // Run distribution
       const workspace = path.join(testRoot, 'target-engine');
@@ -258,7 +258,7 @@ describe('SkillDistributor', () => {
       expect(existsSync(path.join(targetDir, 'pptx'))).toBe(true);
     });
 
-    it('stale AionUi copy without marker is preserved during cleanup', () => {
+    it('stale Margay copy without marker is preserved during cleanup', () => {
       mkdirSync(targetDir, { recursive: true });
 
       // Create a directory named "old-skill" (no marker, but manifest lists it)
@@ -267,9 +267,9 @@ describe('SkillDistributor', () => {
       writeFileSync(path.join(staleDir, 'SKILL.md'), '# Old skill');
       // No provenance marker!
 
-      // Write manifest listing "old-skill" as AionUi-managed
-      const manifest = { managedBy: 'aionui', skills: ['old-skill'] };
-      writeFileSync(path.join(targetDir, '.aionui-manifest.json'), JSON.stringify(manifest));
+      // Write manifest listing "old-skill" as Margay-managed
+      const manifest = { managedBy: 'margay', skills: ['old-skill'] };
+      writeFileSync(path.join(targetDir, '.margay-manifest.json'), JSON.stringify(manifest));
 
       // Run distribution with no skills matching "old-skill"
       const workspace = path.join(testRoot, 'target-engine');
@@ -323,18 +323,18 @@ describe('SkillDistributor', () => {
       expect(existsSync(path.join(targetDir, 'pptx'))).toBe(true);
     });
 
-    it('stale AionUi copy WITH marker IS removed during cleanup', () => {
+    it('stale Margay copy WITH marker IS removed during cleanup', () => {
       mkdirSync(targetDir, { recursive: true });
 
       // Create a directory named "old-skill" WITH marker (legitimately ours)
       const staleDir = path.join(targetDir, 'old-skill');
       mkdirSync(staleDir, { recursive: true });
       writeFileSync(path.join(staleDir, 'SKILL.md'), '# Old skill');
-      writeFileSync(path.join(staleDir, PROVENANCE_MARKER), 'managed-by-aionui\n');
+      writeFileSync(path.join(staleDir, PROVENANCE_MARKER), 'managed-by-margay\n');
 
       // Write manifest listing "old-skill"
-      const manifest = { managedBy: 'aionui', skills: ['old-skill'] };
-      writeFileSync(path.join(targetDir, '.aionui-manifest.json'), JSON.stringify(manifest));
+      const manifest = { managedBy: 'margay', skills: ['old-skill'] };
+      writeFileSync(path.join(targetDir, '.margay-manifest.json'), JSON.stringify(manifest));
 
       // Run distribution with no skills matching "old-skill"
       const workspace = path.join(testRoot, 'target-engine');
@@ -515,27 +515,27 @@ describe('SkillDistributor', () => {
       expect(results).toEqual([]);
     });
 
-    it('skips AionUi-managed symlinks', () => {
-      // Distribute first to create AionUi-managed copies
+    it('skips Margay-managed symlinks', () => {
+      // Distribute first to create Margay-managed copies
       distributeForClaude(workspace);
 
       const results = detectEngineNativeSkills(workspace);
-      // All entries are AionUi-managed copies, so nothing should be detected
+      // All entries are Margay-managed copies, so nothing should be detected
       expect(results).toEqual([]);
     });
 
-    it('skips AionUi-managed copies (with provenance marker)', () => {
+    it('skips Margay-managed copies (with provenance marker)', () => {
       mkdirSync(claudeSkillsDir, { recursive: true });
 
       // Create a copy with provenance marker
       const copyDir = path.join(claudeSkillsDir, 'managed-copy');
       mkdirSync(copyDir, { recursive: true });
       writeFileSync(path.join(copyDir, 'SKILL.md'), '# Managed copy');
-      writeFileSync(path.join(copyDir, PROVENANCE_MARKER), 'managed-by-aionui\n');
+      writeFileSync(path.join(copyDir, PROVENANCE_MARKER), 'managed-by-margay\n');
 
       // Write manifest listing it
-      const manifest = { managedBy: 'aionui', skills: ['managed-copy'] };
-      writeFileSync(path.join(claudeSkillsDir, '.aionui-manifest.json'), JSON.stringify(manifest));
+      const manifest = { managedBy: 'margay', skills: ['managed-copy'] };
+      writeFileSync(path.join(claudeSkillsDir, '.margay-manifest.json'), JSON.stringify(manifest));
 
       const results = detectEngineNativeSkills(workspace);
       expect(results).toEqual([]);

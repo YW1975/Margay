@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 Margay
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -8,7 +8,7 @@ import { Collapse, Message } from '@arco-design/web-react';
 import React from 'react';
 import AssistantManagement from '@/renderer/pages/settings/AssistantManagement';
 import BackendManagement from '@/renderer/pages/settings/BackendManagement';
-import AionScrollArea from '@/renderer/components/base/AionScrollArea';
+import MargayScrollArea from '@/renderer/components/base/MargayScrollArea';
 import { useSettingsViewMode } from '../settingsViewContext';
 
 const AgentModalContent: React.FC = () => {
@@ -20,12 +20,12 @@ const AgentModalContent: React.FC = () => {
     <div className='flex flex-col h-full w-full'>
       {agentMessageContext}
 
-      <AionScrollArea className='flex-1 min-h-0 pb-16px scrollbar-hide' disableOverflow={isPageMode}>
+      <MargayScrollArea className='flex-1 min-h-0 pb-16px scrollbar-hide' disableOverflow={isPageMode}>
         <Collapse defaultActiveKey={['backend-management', 'smart-assistants']}>
           <BackendManagement />
           <AssistantManagement message={agentMessage} />
         </Collapse>
-      </AionScrollArea>
+      </MargayScrollArea>
     </div>
   );
 };

@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 Margay
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -35,7 +35,7 @@ export function initShellBridge(): void {
     // Write command to a temp script file to avoid shell escaping issues
     // with complex commands (nested quotes, !, <>, etc.)
     const tmpDir = os.tmpdir();
-    const scriptId = `aionui-term-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const scriptId = `margay-term-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const isWindows = platform === 'win32';
     const scriptExt = isWindows ? '.bat' : '.sh';
     const scriptPath = path.join(tmpDir, scriptId + scriptExt);

@@ -11,12 +11,12 @@ interface ModalWrapperProps extends Omit<ModalProps, 'title'> {
 
 const ModalWrapper: React.FC<ModalWrapperProps> = ({ children, title, showCustomClose = true, onCancel, className = '', ...props }) => {
   return (
-    <Modal {...props} title={null} closable={false} onCancel={onCancel} className={`aionui-modal ${className}`}>
+    <Modal {...props} title={null} closable={false} onCancel={onCancel} className={`margay-modal ${className}`}>
       <div>
         {showCustomClose && title && (
-          <div className='aionui-modal-header'>
-            <h3 className='aionui-modal-title'>{title}</h3>
-            <button onClick={onCancel} className='aionui-modal-close-btn'>
+          <div className='margay-modal-header'>
+            <h3 className='margay-modal-title'>{title}</h3>
+            <button onClick={onCancel} className='margay-modal-close-btn'>
               <Close size={20} fill='#86909c' />
             </button>
           </div>

@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 Margay
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -129,7 +129,7 @@ async function saveGeneratedImage(base64Data: string, config: Config, messageId?
 }
 
 export class ImageGenerationTool extends BaseDeclarativeTool<ImageGenerationToolParams, ToolResult> {
-  static readonly Name: string = 'aionui_image_generation';
+  static readonly Name: string = 'margay_image_generation';
 
   constructor(
     private readonly config: Config,

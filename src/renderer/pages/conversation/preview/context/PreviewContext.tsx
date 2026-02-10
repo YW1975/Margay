@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 Margay
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -72,7 +72,7 @@ export interface PreviewContextValue {
 const PreviewContext = createContext<PreviewContextValue | null>(null);
 
 // 持久化 key / Persistence key
-const PREVIEW_STATE_KEY = 'aionui_preview_state';
+const PREVIEW_STATE_KEY = 'margay_preview_state';
 
 // 从 localStorage 恢复状态 / Restore state from localStorage
 // 注意：isOpen 不从 localStorage 恢复，新会话时预览面板默认关闭

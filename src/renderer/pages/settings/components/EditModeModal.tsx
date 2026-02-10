@@ -3,7 +3,7 @@ import ModalHOC from '@/renderer/utils/ModalHOC';
 import { Form, Input } from '@arco-design/web-react';
 import React, { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import AionModal from '@/renderer/components/base/AionModal';
+import MargayModal from '@/renderer/components/base/MargayModal';
 import { LinkCloud } from '@icon-park/react';
 
 // Provider Logo imports
@@ -113,7 +113,7 @@ const EditModeModal = ModalHOC<{ data?: IProvider; onChange(data: IProvider): vo
   }, [data]);
 
   return (
-    <AionModal
+    <MargayModal
       visible={modalProps.visible}
       onCancel={modalCtrl.close}
       header={{ title: t('settings.editModel'), showClose: true }}
@@ -154,7 +154,7 @@ const EditModeModal = ModalHOC<{ data?: IProvider; onChange(data: IProvider): vo
           </Form.Item>
         </Form>
       </div>
-    </AionModal>
+    </MargayModal>
   );
 });
 

@@ -1,11 +1,11 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 Margay
  * SPDX-License-Identifier: Apache-2.0
  */
 
 import { useThemeContext } from '@/renderer/context/ThemeContext';
-import AionSelect from '@/renderer/components/base/AionSelect';
+import MargaySelect from '@/renderer/components/base/MargaySelect';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -22,10 +22,10 @@ export const ThemeSwitcher = () => {
   return (
     <div className='flex items-center gap-8px'>
       {/* 明暗模式选择器 / Light/Dark mode selector */}
-      <AionSelect value={theme} onChange={setTheme} className='w-160px'>
-        <AionSelect.Option value='light'>{t('settings.lightMode')}</AionSelect.Option>
-        <AionSelect.Option value='dark'>{t('settings.darkMode')}</AionSelect.Option>
-      </AionSelect>
+      <MargaySelect value={theme} onChange={setTheme} className='w-160px'>
+        <MargaySelect.Option value='light'>{t('settings.lightMode')}</MargaySelect.Option>
+        <MargaySelect.Option value='dark'>{t('settings.darkMode')}</MargaySelect.Option>
+      </MargaySelect>
     </div>
   );
 };

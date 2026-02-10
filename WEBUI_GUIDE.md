@@ -53,7 +53,7 @@ Margay.exe --webui
 
 ### Method 3: Create a Batch File
 
-Create `start-aionui-webui.bat`:
+Create `start-margay-webui.bat`:
 
 ```batch
 @echo off
@@ -81,7 +81,7 @@ open -a Margay --args --webui
 
 ### Method 2: Create Shell Script
 
-Create `start-aionui-webui.sh`:
+Create `start-margay-webui.sh`:
 
 ```bash
 #!/bin/bash
@@ -91,8 +91,8 @@ Create `start-aionui-webui.sh`:
 Make it executable and run:
 
 ```bash
-chmod +x start-aionui-webui.sh
-./start-aionui-webui.sh
+chmod +x start-margay-webui.sh
+./start-margay-webui.sh
 ```
 
 ### Method 3: Create Automator Application
@@ -123,10 +123,10 @@ chmod +x start-aionui-webui.sh
 
 ```bash
 # Using system path
-aionui --webui
+margay --webui
 
 # Or using full path
-/opt/Margay/aionui --webui
+/opt/Margay/margay --webui
 ```
 
 #### For AppImage
@@ -141,14 +141,14 @@ chmod +x Margay-*.AppImage
 
 ### Method 2: Create Desktop Entry
 
-Create `~/.local/share/applications/aionui-webui.desktop`:
+Create `~/.local/share/applications/margay-webui.desktop`:
 
 ```ini
 [Desktop Entry]
 Name=Margay WebUI
 Comment=Start Margay in WebUI mode
-Exec=/opt/Margay/aionui --webui
-Icon=aionui
+Exec=/opt/Margay/margay --webui
+Icon=margay
 Terminal=false
 Type=Application
 Categories=Utility;Office;
@@ -157,35 +157,35 @@ Categories=Utility;Office;
 Make it executable:
 
 ```bash
-chmod +x ~/.local/share/applications/aionui-webui.desktop
+chmod +x ~/.local/share/applications/margay-webui.desktop
 ```
 
 The launcher will appear in your application menu.
 
 ### Method 3: Create Shell Script
 
-Create `~/bin/start-aionui-webui.sh`:
+Create `~/bin/start-margay-webui.sh`:
 
 ```bash
 #!/bin/bash
-/opt/Margay/aionui --webui
+/opt/Margay/margay --webui
 ```
 
 Make it executable:
 
 ```bash
-chmod +x ~/bin/start-aionui-webui.sh
+chmod +x ~/bin/start-margay-webui.sh
 ```
 
 Run it:
 
 ```bash
-start-aionui-webui.sh
+start-margay-webui.sh
 ```
 
 ### Method 4: Systemd Service (Background)
 
-Create `/etc/systemd/system/aionui-webui.service`:
+Create `/etc/systemd/system/margay-webui.service`:
 
 ```ini
 [Unit]
@@ -195,7 +195,7 @@ After=network.target
 [Service]
 Type=simple
 User=YOUR_USERNAME
-ExecStart=/opt/Margay/aionui --webui --remote
+ExecStart=/opt/Margay/margay --webui --remote
 Restart=on-failure
 RestartSec=10
 
@@ -207,11 +207,11 @@ Enable and start the service:
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable aionui-webui.service
-sudo systemctl start aionui-webui.service
+sudo systemctl enable margay-webui.service
+sudo systemctl start margay-webui.service
 
 # Check status
-sudo systemctl status aionui-webui.service
+sudo systemctl status margay-webui.service
 ```
 
 ---
@@ -359,7 +359,7 @@ Margay --no-sandbox --webui --port 8080
 
 ```bash
 # Ensure the binary has execute permissions
-chmod +x /opt/Margay/aionui
+chmod +x /opt/Margay/margay
 ```
 
 #### Out of Memory
@@ -392,17 +392,17 @@ For convenience, create a script to launch Margay quickly:
 
 ```bash
 # Create script in Ubuntu (proot)
-cat > ~/start-aionui.sh << 'EOF'
+cat > ~/start-margay.sh << 'EOF'
 #!/bin/bash
 echo "Starting Margay WebUI..."
 Margay --no-sandbox --webui --remote
 EOF
 
 # Make executable
-chmod +x ~/start-aionui.sh
+chmod +x ~/start-margay.sh
 
 # Run anytime
-./start-aionui.sh
+./start-margay.sh
 ```
 
 ### Quick Start Command (One-liner)
@@ -442,7 +442,7 @@ Margay.exe --webui --remote
 ### Linux
 
 ```bash
-aionui --webui --remote
+margay --webui --remote
 ```
 
 **Security Note**: Remote mode allows network access. Use only on trusted networks. Consider setting up authentication and firewall rules for production use.
@@ -525,9 +525,9 @@ mdfind -name "Margay.app"
 **Linux:**
 
 ```bash
-which aionui
+which margay
 # or
-find /opt -name "aionui" 2>/dev/null
+find /opt -name "margay" 2>/dev/null
 ```
 
 ### View Logs
@@ -535,13 +535,13 @@ find /opt -name "aionui" 2>/dev/null
 **Windows (PowerShell):**
 
 ```powershell
-& "C:\Program Files\Margay\Margay.exe" --webui 2>&1 | Tee-Object -FilePath aionui.log
+& "C:\Program Files\Margay\Margay.exe" --webui 2>&1 | Tee-Object -FilePath margay.log
 ```
 
 **macOS/Linux:**
 
 ```bash
-/path/to/aionui --webui 2>&1 | tee aionui.log
+/path/to/margay --webui 2>&1 | tee margay.log
 ```
 
 ---
@@ -561,10 +561,10 @@ export AIONUI_ALLOW_REMOTE=true
 export AIONUI_HOST=0.0.0.0
 
 # Then start the application
-aionui --webui
+margay --webui
 
 # You can also pass the port directly via CLI
-aionui --webui --port 8080
+margay --webui --port 8080
 ```
 
 ---
@@ -634,13 +634,13 @@ If you forgot your admin password in WebUI mode, you can reset it using the `--r
 
 ```bash
 # Using system path
-aionui --resetpass
+margay --resetpass
 
 # Or for a specific user
-aionui --resetpass username
+margay --resetpass username
 
 # Or using full path
-/opt/Margay/aionui --resetpass
+/opt/Margay/margay --resetpass
 ```
 
 ### What happens when you run --resetpass:

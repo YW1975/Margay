@@ -1,11 +1,11 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 Margay
  * SPDX-License-Identifier: Apache-2.0
  */
 
 /**
- * AionUi 基础组件库统一导出 / AionUi base components unified exports
+ * Margay 基础组件库统一导出 / Margay base components unified exports
  *
  * 提供所有基础组件和类型的统一导出入口
  * Provides unified export entry for all base components and types
@@ -13,23 +13,23 @@
 
 // ==================== 组件导出 / Component Exports ====================
 
-export { default as AionModal } from './AionModal';
-export { default as AionCollapse } from './AionCollapse';
-export { default as AionSelect } from './AionSelect';
-export { default as AionScrollArea } from './AionScrollArea';
-export { default as AionSteps } from './AionSteps';
+export { default as MargayModal } from './MargayModal';
+export { default as MargayCollapse } from './MargayCollapse';
+export { default as MargaySelect } from './MargaySelect';
+export { default as MargayScrollArea } from './MargayScrollArea';
+export { default as MargaySteps } from './MargaySteps';
 
 // ==================== 类型导出 / Type Exports ====================
 
-// AionModal 类型 / AionModal types
-export type { ModalSize, ModalHeaderConfig, ModalFooterConfig, ModalContentStyleConfig, AionModalProps } from './AionModal';
-export { MODAL_SIZES } from './AionModal';
+// MargayModal 类型 / MargayModal types
+export type { ModalSize, ModalHeaderConfig, ModalFooterConfig, ModalContentStyleConfig, MargayModalProps } from './MargayModal';
+export { MODAL_SIZES } from './MargayModal';
 
-// AionCollapse 类型 / AionCollapse types
-export type { AionCollapseProps, AionCollapseItemProps } from './AionCollapse';
+// MargayCollapse 类型 / MargayCollapse types
+export type { MargayCollapseProps, MargayCollapseItemProps } from './MargayCollapse';
 
-// AionSelect 类型 / AionSelect types
-export type { AionSelectProps } from './AionSelect';
+// MargaySelect 类型 / MargaySelect types
+export type { MargaySelectProps } from './MargaySelect';
 
-// AionSteps 类型 / AionSteps types
-export type { AionStepsProps } from './AionSteps';
+// MargaySteps 类型 / MargaySteps types
+export type { MargayStepsProps } from './MargaySteps';

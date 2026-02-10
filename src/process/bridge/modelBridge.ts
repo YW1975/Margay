@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 Margay
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -100,7 +100,7 @@ export function initModelBridge(): void {
       // 使用自定义 User-Agent，避免某些 API 中转站（如 packyapi）拦截 OpenAI SDK 默认的 User-Agent
       // Use custom User-Agent to avoid some API proxies (like packyapi) blocking OpenAI SDK's default User-Agent
       defaultHeaders: {
-        'User-Agent': 'AionUI/1.0',
+        'User-Agent': 'Margay/1.0',
       },
     });
 

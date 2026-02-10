@@ -1,12 +1,12 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 Margay
  * SPDX-License-Identifier: Apache-2.0
  */
 
 import { ipcBridge } from '@/common';
 import { ConfigStorage } from '@/common/storage';
-import AionScrollArea from '@/renderer/components/base/AionScrollArea';
+import MargayScrollArea from '@/renderer/components/base/MargayScrollArea';
 import { useThemeContext } from '@/renderer/context/ThemeContext';
 import { Button, Divider, Form, Input, Message, Switch } from '@arco-design/web-react';
 import React, { useEffect, useState } from 'react';
@@ -149,7 +149,7 @@ const GeminiModalContent: React.FC<GeminiModalContentProps> = ({ onRequestClose 
       {messageContext}
 
       {/* Content Area */}
-      <AionScrollArea className='flex-1 min-h-0' disableOverflow={isPageMode}>
+      <MargayScrollArea className='flex-1 min-h-0' disableOverflow={isPageMode}>
         <div className='space-y-16px'>
           <div className='px-[12px] py-[24px] md:px-[32px] bg-2 rd-12px md:rd-16px border border-border-2'>
             <Form form={form} layout='horizontal' labelCol={{ flex: '140px' }} labelAlign='left' wrapperCol={{ flex: '1' }}>
@@ -246,7 +246,7 @@ const GeminiModalContent: React.FC<GeminiModalContentProps> = ({ onRequestClose 
             </Form>
           </div>
         </div>
-      </AionScrollArea>
+      </MargayScrollArea>
 
       {/* Footer with Buttons */}
       <div className={classNames('flex-shrink-0 flex gap-10px border-t border-border-2 pl-24px py-16px', isPageMode ? 'border-none pl-0 pr-0 pt-10px flex-col md:flex-row md:justify-end' : 'justify-end')}>

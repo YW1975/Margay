@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 Margay
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -12,7 +12,7 @@ import path from 'path';
 import { getSystemDir } from './initStorage';
 export const getTempPath = () => {
   const rootPath = app.getPath('temp');
-  return path.join(rootPath, 'aionui');
+  return path.join(rootPath, 'margay');
 };
 
 /**
@@ -65,23 +65,23 @@ const ensureCliSafeSymlink = (targetPath: string, symlinkName: string): string =
 };
 
 /**
- * Get data path, using CLI-safe symlink (~/.aionui) on macOS.
- * 获取数据目录路径，macOS 上使用 ~/.aionui 符号链接。
+ * Get data path, using CLI-safe symlink (~/.margay) on macOS.
+ * 获取数据目录路径，macOS 上使用 ~/.margay 符号链接。
  */
 export const getDataPath = (): string => {
   const rootPath = app.getPath('userData');
-  const dataPath = path.join(rootPath, 'aionui');
-  return ensureCliSafeSymlink(dataPath, '.aionui');
+  const dataPath = path.join(rootPath, 'margay');
+  return ensureCliSafeSymlink(dataPath, '.margay');
 };
 
 /**
- * Get config path, using CLI-safe symlink (~/.aionui-config) on macOS.
- * 获取配置目录路径，macOS 上使用 ~/.aionui-config 符号链接。
+ * Get config path, using CLI-safe symlink (~/.margay-config) on macOS.
+ * 获取配置目录路径，macOS 上使用 ~/.margay-config 符号链接。
  */
 export const getConfigPath = (): string => {
   const rootPath = app.getPath('userData');
   const configPath = path.join(rootPath, 'config');
-  return ensureCliSafeSymlink(configPath, '.aionui-config');
+  return ensureCliSafeSymlink(configPath, '.margay-config');
 };
 
 export const generateHashWithFullName = (fullName: string): string => {
@@ -293,7 +293,7 @@ export async function verifyDirectoryFiles(dir1: string, dir2: string): Promise<
 
     return true;
   } catch (error) {
-    console.warn('[AionUi] Error verifying directory files:', error);
+    console.warn('[Margay] Error verifying directory files:', error);
     return false;
   }
 }
@@ -313,8 +313,8 @@ export const copyFilesToDirectory = async (dir: string, files?: string[], skipCl
     try {
       await fs.access(absoluteFilePath);
     } catch (error) {
-      console.warn(`[AionUi] Source file does not exist, skipping: ${absoluteFilePath}`);
-      console.warn(`[AionUi] Original path: ${file}`);
+      console.warn(`[Margay] Source file does not exist, skipping: ${absoluteFilePath}`);
+      console.warn(`[Margay] Original path: ${file}`);
       // 跳过不存在的文件，而不是抛出错误
       continue;
     }
@@ -337,7 +337,7 @@ export const copyFilesToDirectory = async (dir: string, files?: string[], skipCl
       await fs.copyFile(absoluteFilePath, destPath);
       copiedFiles.push(destPath);
     } catch (error) {
-      console.error(`[AionUi] Failed to copy file from ${absoluteFilePath} to ${destPath}:`, error);
+      console.error(`[Margay] Failed to copy file from ${absoluteFilePath} to ${destPath}:`, error);
       // 继续处理其他文件，而不是完全失败
     }
 

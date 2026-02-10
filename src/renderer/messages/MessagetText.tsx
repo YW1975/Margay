@@ -1,11 +1,11 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 Margay
  * SPDX-License-Identifier: Apache-2.0
  */
 
 import type { IMessageText } from '@/common/chatLib';
-import { AIONUI_FILES_MARKER } from '@/common/constants';
+import { MARGAY_FILES_MARKER } from '@/common/constants';
 import { iconColors } from '@/renderer/theme/colors';
 import { Alert, Tooltip } from '@arco-design/web-react';
 import { Copy } from '@icon-park/react';
@@ -18,12 +18,12 @@ import HorizontalFileList from '../components/HorizontalFileList';
 import MarkdownView from '../components/Markdown';
 
 const parseFileMarker = (content: string) => {
-  const markerIndex = content.indexOf(AIONUI_FILES_MARKER);
+  const markerIndex = content.indexOf(MARGAY_FILES_MARKER);
   if (markerIndex === -1) {
     return { text: content, files: [] as string[] };
   }
   const text = content.slice(0, markerIndex).trimEnd();
-  const afterMarker = content.slice(markerIndex + AIONUI_FILES_MARKER.length).trim();
+  const afterMarker = content.slice(markerIndex + MARGAY_FILES_MARKER.length).trim();
   const files = afterMarker
     ? afterMarker
         .split('\n')

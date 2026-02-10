@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 Margay
  * SPDX-License-Identifier: Apache-2.0
  *
  * Reset password CLI utility for packaged applications
@@ -74,7 +74,7 @@ export async function resetPasswordCLI(username: string): Promise<void> {
     log.info(`Target user: ${username}`);
 
     // Get database path using the same logic as the main app
-    const dbPath = path.join(getDataPath(), 'aionui.db');
+    const dbPath = path.join(getDataPath(), 'margay.db');
     log.info(`Database path: ${dbPath}`);
 
     // Ensure directory exists
@@ -90,11 +90,11 @@ export async function resetPasswordCLI(username: string): Promise<void> {
     if (!tableExists) {
       log.error('Database is not initialized yet');
       log.info('');
-      log.info('Please run AionUi at least once to initialize the database:');
-      log.info('  aionui --webui');
+      log.info('Please run Margay at least once to initialize the database:');
+      log.info('  margay --webui');
       log.info('');
       log.info('Then you can reset the password using:');
-      log.info('  aionui --resetpass <username>');
+      log.info('  margay --resetpass <username>');
       process.exit(1);
     }
 

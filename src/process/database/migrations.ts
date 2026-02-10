@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 Margay
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -444,9 +444,90 @@ const migration_v11: IMigration = {
 };
 
 /**
+ * Migration v11 -> v12: Rebrand aionui → margay in conversations source column
+ */
+const migration_v12: IMigration = {
+  version: 12,
+  name: 'Rebrand aionui to margay in conversations source',
+  up: (db) => {
+    // SQLite cannot ALTER CHECK constraints, so rebuild the table
+    db.exec(`
+      -- Create new table with updated CHECK constraint
+      CREATE TABLE conversations_new (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL CHECK(type IN ('gemini', 'acp', 'codex')),
+        extra TEXT NOT NULL,
+        model TEXT,
+        status TEXT CHECK(status IN ('pending', 'running', 'finished')),
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        source TEXT CHECK(source IN ('margay', 'telegram')),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      -- Copy data, converting aionui → margay
+      INSERT INTO conversations_new
+        SELECT id, user_id, name, type, extra, model, status, created_at, updated_at,
+          CASE WHEN source = 'aionui' THEN 'margay' ELSE source END
+        FROM conversations;
+
+      -- Drop old table
+      DROP TABLE conversations;
+
+      -- Rename new table
+      ALTER TABLE conversations_new RENAME TO conversations;
+
+      -- Recreate all indexes
+      CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON conversations(user_id);
+      CREATE INDEX IF NOT EXISTS idx_conversations_updated_at ON conversations(updated_at);
+      CREATE INDEX IF NOT EXISTS idx_conversations_type ON conversations(type);
+      CREATE INDEX IF NOT EXISTS idx_conversations_user_updated ON conversations(user_id, updated_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_conversations_source ON conversations(source);
+      CREATE INDEX IF NOT EXISTS idx_conversations_source_updated ON conversations(source, updated_at DESC);
+    `);
+    console.log('[Migration v12] Rebuilt conversations table: source CHECK aionui → margay');
+  },
+  down: (db) => {
+    db.exec(`
+      CREATE TABLE conversations_old (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL CHECK(type IN ('gemini', 'acp', 'codex')),
+        extra TEXT NOT NULL,
+        model TEXT,
+        status TEXT CHECK(status IN ('pending', 'running', 'finished')),
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        source TEXT CHECK(source IN ('aionui', 'telegram')),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      INSERT INTO conversations_old
+        SELECT id, user_id, name, type, extra, model, status, created_at, updated_at,
+          CASE WHEN source = 'margay' THEN 'aionui' ELSE source END
+        FROM conversations;
+
+      DROP TABLE conversations;
+      ALTER TABLE conversations_old RENAME TO conversations;
+
+      CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON conversations(user_id);
+      CREATE INDEX IF NOT EXISTS idx_conversations_updated_at ON conversations(updated_at);
+      CREATE INDEX IF NOT EXISTS idx_conversations_type ON conversations(type);
+      CREATE INDEX IF NOT EXISTS idx_conversations_user_updated ON conversations(user_id, updated_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_conversations_source ON conversations(source);
+      CREATE INDEX IF NOT EXISTS idx_conversations_source_updated ON conversations(source, updated_at DESC);
+    `);
+    console.log('[Migration v12] Rolled back: rebuilt conversations table with aionui source');
+  },
+};
+
+/**
  * All migrations in order
  */
-export const ALL_MIGRATIONS: IMigration[] = [migration_v1, migration_v2, migration_v3, migration_v4, migration_v5, migration_v6, migration_v7, migration_v8, migration_v9, migration_v10, migration_v11];
+export const ALL_MIGRATIONS: IMigration[] = [migration_v1, migration_v2, migration_v3, migration_v4, migration_v5, migration_v6, migration_v7, migration_v8, migration_v9, migration_v10, migration_v11, migration_v12];
 
 /**
  * Get migrations needed to upgrade from one version to another
