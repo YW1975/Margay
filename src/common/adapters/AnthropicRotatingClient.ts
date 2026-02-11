@@ -5,7 +5,7 @@
  */
 
 import Anthropic, { type ClientOptions as AnthropicClientOptions_ } from '@anthropic-ai/sdk';
-import { AuthType } from '@office-ai/aioncli-core';
+import { AuthType } from '@/agent/gemini/auth-compat';
 import type { RotatingApiClientOptions } from '../RotatingApiClient';
 import { RotatingApiClient } from '../RotatingApiClient';
 import { OpenAI2AnthropicConverter, type OpenAIChatCompletionParams, type OpenAIChatCompletionResponse } from './OpenAI2AnthropicConverter';

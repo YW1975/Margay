@@ -4,9 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { MCPOAuthProvider, OAUTH_DISPLAY_MESSAGE_EVENT } from '@office-ai/aioncli-core/dist/src/mcp/oauth-provider.js';
-import { MCPOAuthTokenStorage } from '@office-ai/aioncli-core/dist/src/mcp/oauth-token-storage.js';
-import type { MCPOAuthConfig } from '@office-ai/aioncli-core/dist/src/mcp/oauth-provider.js';
+import { MCPOAuthProvider, OAUTH_DISPLAY_MESSAGE_EVENT, MCPOAuthTokenStorage } from '@margay/agent-core';
+import type { MCPOAuthConfig } from '@margay/agent-core';
 import { EventEmitter } from 'node:events';
 import type { IMcpServer } from '../../../common/storage';
 
@@ -20,7 +19,7 @@ export interface OAuthStatus {
  * MCP OAuth 服务
  *
  * 负责管理 MCP 服务器的 OAuth 认证流程
- * 使用 @office-ai/aioncli-core 的 OAuth 功能
+ * 使用 @margay/agent-core 的 OAuth 功能
  */
 export class McpOAuthService {
   private oauthProvider: MCPOAuthProvider;

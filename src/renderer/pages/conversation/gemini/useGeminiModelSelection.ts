@@ -59,7 +59,13 @@ export const useGeminiModelSelection = (conversationId: string | undefined, init
   const providers = useMemo(() => {
     // 根据是否启用 Google Auth 动态拼接 provider 列表
     // Dynamically build provider list when Google Auth provider is available
-    let list: IProvider[] = Array.isArray(modelConfig) ? modelConfig : [];
+    // Filter to Google-native platforms only — gemini-cli-core v0.24.0 does not support
+    // OpenAI/Anthropic content generators. Non-Google providers should use ACP engines.
+    const isGoogleNativePlatform = (platform?: string) => {
+      const p = platform?.toLowerCase() || '';
+      return p.includes('gemini') || p.includes('google') || p.includes('vertex');
+    };
+    let list: IProvider[] = (Array.isArray(modelConfig) ? modelConfig : []).filter((p) => isGoogleNativePlatform(p.platform));
     if (isGoogleAuth) {
       const googleProvider: IProvider = {
         id: 'google-auth-gemini',

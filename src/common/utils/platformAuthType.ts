@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { AuthType } from '@office-ai/aioncli-core';
+import { AuthType } from '@/agent/gemini/auth-compat';
 
 /**
  * 根据平台名称获取对应的认证类型

@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { AuthType } from '@office-ai/aioncli-core';
+import { AuthType } from '@/agent/gemini/auth-compat';
 
 /**
  * Multi-API Key Manager with Time-based Blacklisting

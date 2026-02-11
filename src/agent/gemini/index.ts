@@ -13,8 +13,9 @@ import { NavigationInterceptor } from '@/common/navigation';
 import type { TProviderWithModel } from '@/common/storage';
 import { uuid } from '@/common/utils';
 import { getProviderAuthType } from '@/common/utils/platformAuthType';
-import type { CompletedToolCall, Config, GeminiClient, ServerGeminiStreamEvent, ToolCall, ToolCallRequestInfo, Turn } from '@office-ai/aioncli-core';
-import { AuthType, CoreToolScheduler, FileDiscoveryService, sessionId, refreshServerHierarchicalMemory, clearOauthClientCache } from '@office-ai/aioncli-core';
+import type { CompletedToolCall, Config, GeminiClient, ServerGeminiStreamEvent, ToolCall, ToolCallRequestInfo, Turn } from '@margay/agent-core';
+import { AuthType, isGoogleNativeAuthType } from './auth-compat';
+import { CoreToolScheduler, FileDiscoveryService, sessionId, refreshServerHierarchicalMemory, clearOauthClientCache } from '@margay/agent-core';
 import { ApiKeyManager } from '../../common/ApiKeyManager';
 import { handleAtCommand } from './cli/atCommandProcessor';
 import { loadCliConfig } from './cli/config';
@@ -45,9 +46,9 @@ interface GeminiAgent2Options {
   // 系统规则，在初始化时注入到 userMemory / System rules, injected into userMemory at initialization
   presetRules?: string;
   contextContent?: string; // 向后兼容 / Backward compatible
-  /** 内置 skills 目录路径，使用 aioncli-core SkillManager 加载 / Builtin skills directory path, loaded by aioncli-core SkillManager */
+  /** 内置 skills 目录路径，使用 @margay/agent-core SkillManager 加载 / Builtin skills directory path, loaded by @margay/agent-core SkillManager */
   skillsDir?: string;
-  /** 禁用的 skills 列表，传给 aioncli-core 原生 SkillManager / Disabled skills list passed to native SkillManager */
+  /** 禁用的 skills 列表，传给 @margay/agent-core 原生 SkillManager / Disabled skills list passed to native SkillManager */
   disabledSkills?: string[];
 }
 
@@ -261,9 +262,9 @@ export class GeminiAgent {
     });
     await this.config.initialize();
 
-    // aioncli-core 的 SkillManager.discoverSkills() 会重新从用户 skills 目录加载所有 skills
+    // @margay/agent-core 的 SkillManager.discoverSkills() 会重新从用户 skills 目录加载所有 skills
     // 覆盖了 loadCliConfig 中的过滤，需要在这里重新应用 disabledSkills 过滤
-    // aioncli-core's SkillManager.discoverSkills() reloads all skills from user directory,
+    // @margay/agent-core's SkillManager.discoverSkills() reloads all skills from user directory,
     // overriding our filtering in loadCliConfig, so we need to re-apply disabledSkills filter here
     if (this.disabledSkills && this.disabledSkills.length > 0) {
       const disabledSet = new Set(this.disabledSkills);
@@ -277,7 +278,11 @@ export class GeminiAgent {
       clearOauthClientCache();
     }
 
-    await this.config.refreshAuth(this.authType || AuthType.USE_GEMINI);
+    // Google's gemini-cli-core only supports Google-native auth types.
+    // Fall back to USE_GEMINI for non-Google providers to ensure content generator is initialized.
+    const effectiveAuth = this.authType || AuthType.USE_GEMINI;
+    const coreAuth = isGoogleNativeAuthType(effectiveAuth) ? effectiveAuth : AuthType.USE_GEMINI;
+    await this.config.refreshAuth(coreAuth);
 
     this.geminiClient = this.config.getGeminiClient();
 
@@ -315,8 +320,8 @@ export class GeminiAgent {
         try {
           if (completedToolCalls.length > 0) {
             const refreshMemory = async () => {
-              // 直接使用 aioncli-core 提供的 refreshServerHierarchicalMemory
-              // Directly use refreshServerHierarchicalMemory from aioncli-core
+              // 直接使用 @margay/agent-core 提供的 refreshServerHierarchicalMemory
+              // Directly use refreshServerHierarchicalMemory from @margay/agent-core
               // 它会自动从 config 获取 ExtensionLoader 并更新 memory
               // It automatically gets ExtensionLoader from config and updates memory
               await refreshServerHierarchicalMemory(this.config);
@@ -372,7 +377,7 @@ export class GeminiAgent {
           });
         }
       },
-      // onEditorClose 回调在 aioncli-core v0.18.4 中已移除 / callback was removed in aioncli-core v0.18.4
+      // onEditorClose 回调在 @margay/agent-core v0.18.4 中已移除 / callback was removed in @margay/agent-core v0.18.4
       // approvalMode: this.config.getApprovalMode(),
       getPreferredEditor() {
         return 'vscode';

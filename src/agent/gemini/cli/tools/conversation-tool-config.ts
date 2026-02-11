@@ -6,8 +6,9 @@
 
 import type { TProviderWithModel } from '@/common/storage';
 import { uuid } from '@/common/utils';
-import type { GeminiClient } from '@office-ai/aioncli-core';
-import { AuthType, Config } from '@office-ai/aioncli-core';
+import type { GeminiClient } from '@margay/agent-core';
+import { AuthType } from '@/agent/gemini/auth-compat';
+import { Config } from '@margay/agent-core';
 import { ImageGenerationTool } from './img-gen';
 import { WebFetchTool } from './web-fetch';
 import { WebSearchTool } from './web-search';
@@ -92,7 +93,7 @@ export class ConversationToolConfig {
       cwd: process.cwd(),
       debugMode: false,
       question: '',
-      // fullContext 参数在 aioncli-core v0.18.4 中已移除
+      // fullContext 参数在 @margay/agent-core v0.18.4 中已移除
       userMemory: '',
       geminiMdFileCount: 0,
       model: geminiModel.useModel,

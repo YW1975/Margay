@@ -13,7 +13,7 @@ import type { IMcpServer, TProviderWithModel } from '@/common/storage';
 import { ProcessConfig, getSkillsDir } from '@/process/initStorage';
 import { computeGeminiDisabledSkills, distributeForGemini } from './SkillDistributor';
 import { uuid } from '@/common/utils';
-import { getOauthInfoWithCache } from '@office-ai/aioncli-core';
+import { getOauthInfoWithCache } from '@/agent/gemini/auth-compat';
 import { GeminiApprovalStore } from '../../agent/gemini/GeminiApprovalStore';
 import { ToolConfirmationOutcome } from '../../agent/gemini/cli/tools/tools';
 import { addMessage, addOrUpdateMessage, nextTickToLocalFinish } from '../message';
@@ -47,7 +47,7 @@ export class GeminiAgentManager extends BaseAgentManager<
     skillsDir?: string;
     /** 启用的 skills 列表 / Enabled skills list */
     enabledSkills?: string[];
-    /** 禁用的 skills 列表（传给 aioncli-core 原生 SkillManager）/ Disabled skills passed to native SkillManager */
+    /** 禁用的 skills 列表（传给 @margay/agent-core 原生 SkillManager）/ Disabled skills passed to native SkillManager */
     disabledSkills?: string[];
     /** Yolo mode: auto-approve all tool calls / 自动允许模式 */
     yoloMode?: boolean;
@@ -141,8 +141,8 @@ export class GeminiAgentManager extends BaseAgentManager<
         // 在 bootstrap 时将 Margay skills 分发到 Gemini 工作空间发现目录
         distributeForGemini(this.workspace, this.enabledSkills);
 
-        // Convert enabledSkills (preset whitelist) to disabledSkills (aioncli-core native blacklist)
-        // 将 enabledSkills（预设白名单）转换为 disabledSkills（aioncli-core 原生黑名单）
+        // Convert enabledSkills (preset whitelist) to disabledSkills (@margay/agent-core native blacklist)
+        // 将 enabledSkills（预设白名单）转换为 disabledSkills（@margay/agent-core 原生黑名单）
         const disabledSkills = computeGeminiDisabledSkills(this.enabledSkills);
 
         // Determine yoloMode: forceYoloMode (cron jobs) takes priority over config setting
@@ -160,8 +160,8 @@ export class GeminiAgentManager extends BaseAgentManager<
           contextFileName: this.contextFileName,
           presetRules: this.presetRules,
           contextContent: this.contextContent,
-          // Skills discovered natively by aioncli-core SkillManager
-          // Skills 由 aioncli-core 原生 SkillManager 发现
+          // Skills discovered natively by @margay/agent-core SkillManager
+          // Skills 由 @margay/agent-core 原生 SkillManager 发现
           skillsDir: getSkillsDir(),
           // Disabled skills list for native SkillManager filtering
           // 禁用的 skills 列表，由原生 SkillManager 过滤
@@ -193,12 +193,12 @@ export class GeminiAgentManager extends BaseAgentManager<
         return {};
       }
 
-      // 转换为 aioncli-core 期望的格式
+      // 转换为 @margay/agent-core 期望的格式
       const mcpConfig: Record<string, UiMcpServerConfig> = {};
       mcpServers
         .filter((server: IMcpServer) => server.enabled && server.status === 'connected') // 只使用启用且连接成功的服务器
         .forEach((server: IMcpServer) => {
-          // 只处理 stdio 类型的传输方式，因为 aioncli-core 只支持这种类型
+          // 只处理 stdio 类型的传输方式，因为 @margay/agent-core 只支持这种类型
           if (server.transport.type === 'stdio') {
             mcpConfig[server.name] = {
               command: server.transport.command,

@@ -1,0 +1,3 @@
+[submodule "vendor/gemini-cli"]
+	path = vendor/gemini-cli
+	url = https://github.com/YW1975/gemini-cli.git
