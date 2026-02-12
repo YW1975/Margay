@@ -357,22 +357,27 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
    * This is a pre-existing cross-agent limitation (see Step 5 documentation).
    */
   kill() {
+    let killed = false;
     const GRACE_PERIOD_MS = 500; // treeKill needs time for pgrep + SIGTERM dispatch
     const HARD_TIMEOUT_MS = 1500; // Force kill if stop() hangs
 
-    // Hard fallback: force kill after timeout regardless
-    const hardTimer = setTimeout(() => {
+    const doKill = () => {
+      if (killed) return;
+      killed = true;
+      clearTimeout(hardTimer);
       super.kill();
-    }, HARD_TIMEOUT_MS);
+    };
+
+    // Hard fallback: force kill after timeout regardless
+    const hardTimer = setTimeout(doKill, HARD_TIMEOUT_MS);
 
     // Graceful path: stop → grace period for treeKill → kill
     void (this.agent?.stop?.() || Promise.resolve())
-      .catch(() => {})
+      .catch((err) => {
+        console.warn('[AcpAgentManager] agent.stop() failed during kill:', err);
+      })
       .then(() => new Promise<void>((r) => setTimeout(r, GRACE_PERIOD_MS)))
-      .finally(() => {
-        clearTimeout(hardTimer);
-        super.kill();
-      });
+      .finally(doKill);
   }
 
   /**
