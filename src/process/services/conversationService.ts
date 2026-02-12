@@ -207,32 +207,40 @@ export class ConversationService {
   }
 
   /**
-   * 获取或创建 Telegram 会话
-   * Get or create a Telegram conversation
+   * Get or create a channel conversation for any platform.
    *
-   * 优先复用最后一个 source='telegram' 的会话，没有则创建新会话
-   * Prefers reusing the latest conversation with source='telegram', creates new if none exists
+   * Prefers reusing the latest conversation with the given source, creates new if none exists.
    */
-  static async getOrCreateTelegramConversation(params: ICreateGeminiConversationParams): Promise<ICreateConversationResult> {
+  static async getOrCreateChannelConversation(platform: string, params: ICreateGeminiConversationParams): Promise<ICreateConversationResult> {
     const db = getDatabase();
 
-    // Try to find existing telegram conversation
-    const latestTelegramConv = db.getLatestConversationBySource('telegram');
-    if (latestTelegramConv.success && latestTelegramConv.data) {
-      console.log(`[ConversationService] Reusing existing telegram conversation: ${latestTelegramConv.data.id}`);
-      return { success: true, conversation: latestTelegramConv.data };
+    // Try to find existing conversation for this platform
+    const latest = db.getLatestConversationBySource(platform);
+    if (latest.success && latest.data) {
+      console.log(`[ConversationService] Reusing existing ${platform} conversation: ${latest.data.id}`);
+      return { success: true, conversation: latest.data };
     }
 
-    // Create new telegram conversation
+    // Create new conversation for this platform
+    const displayName = platform.charAt(0).toUpperCase() + platform.slice(1);
     return this.createGeminiConversation({
       ...params,
-      source: 'telegram',
-      name: params.name || 'Telegram Assistant',
+      source: platform,
+      name: params.name || `${displayName} Assistant`,
     });
+  }
+
+  /**
+   * @deprecated Use getOrCreateChannelConversation('telegram', params) instead
+   */
+  static async getOrCreateTelegramConversation(params: ICreateGeminiConversationParams): Promise<ICreateConversationResult> {
+    return this.getOrCreateChannelConversation('telegram', params);
   }
 }
 
 // Export convenience functions
 export const createGeminiConversation = ConversationService.createGeminiConversation.bind(ConversationService);
 export const createConversation = ConversationService.createConversation.bind(ConversationService);
+export const getOrCreateChannelConversation = ConversationService.getOrCreateChannelConversation.bind(ConversationService);
+/** @deprecated Use getOrCreateChannelConversation instead */
 export const getOrCreateTelegramConversation = ConversationService.getOrCreateTelegramConversation.bind(ConversationService);

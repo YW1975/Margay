@@ -18,14 +18,37 @@ import type { ChannelAgentType } from '../types';
 import type { ActionHandler, IRegisteredAction } from './types';
 import { SystemActionNames, createErrorResponse, createSuccessResponse } from './types';
 
+// ==================== Platform-aware Markup Helpers ====================
+// Return platform-native keyboard/card markup, or undefined for platforms
+// that handle buttons at the message component level (e.g. Discord).
+
+function systemMainMenuMarkup(platform: string) {
+  if (platform === 'lark') return createMainMenuCard();
+  if (platform === 'telegram') return createMainMenuKeyboard();
+  return undefined;
+}
+
+function systemSessionControlMarkup(platform: string) {
+  if (platform === 'telegram') return createSessionControlKeyboard();
+  return undefined;
+}
+
+function systemHelpMarkup(platform: string) {
+  if (platform === 'telegram') return createHelpKeyboard();
+  return undefined;
+}
+
 /**
- * Get the default model for Telegram assistant
- * Reads from saved config or falls back to default Gemini model
+ * Get the default model for a channel platform.
+ * Reads from saved config key `assistant.${platform}.defaultModel` or falls back to default Gemini model.
  */
-export async function getTelegramDefaultModel(): Promise<TProviderWithModel> {
+export async function getChannelDefaultModel(platform: string = 'telegram'): Promise<TProviderWithModel> {
   try {
-    // Try to get saved model selection
-    const savedModel = await ProcessConfig.get('assistant.telegram.defaultModel');
+    // Try to get saved model selection for this platform
+    // All channel platforms share the same config shape; use the telegram key as the
+    // canonical typed key and override for other platforms at runtime.
+    const configKey = `assistant.${platform}.defaultModel` as 'assistant.telegram.defaultModel';
+    const savedModel = await ProcessConfig.get(configKey);
     if (savedModel?.id && savedModel?.useModel) {
       // Get full provider config from model.config
       const providers = await ProcessConfig.get('model.config');
@@ -110,14 +133,14 @@ export const handleSessionNew: ActionHandler = async (context) => {
   sessionManager.clearSession(context.channelUser.id);
 
   // 获取用户选择的模型 / Get user selected model
-  const model = await getTelegramDefaultModel();
+  const model = await getChannelDefaultModel(context.platform);
 
   // 使用 ConversationService 创建新会话（始终创建新的，不复用）
   // Use ConversationService to create new conversation (always new, don't reuse)
   const result = await ConversationService.createGeminiConversation({
     model,
-    source: 'telegram',
-    name: 'Telegram Assistant',
+    source: context.platform,
+    name: `${context.platform.charAt(0).toUpperCase() + context.platform.slice(1)} Assistant`,
   });
 
   if (!result.success || !result.conversation) {
@@ -128,12 +151,11 @@ export const handleSessionNew: ActionHandler = async (context) => {
   // 使用新会话 ID 创建 session
   const session = sessionManager.createSessionWithConversation(context.channelUser, result.conversation.id);
 
-  const markup = context.platform === 'lark' ? createMainMenuCard() : createMainMenuKeyboard();
   return createSuccessResponse({
     type: 'text',
     text: `🆕 <b>New Session Created</b>\n\nSession ID: <code>${session.id.slice(-8)}</code>\n\nYou can start a new conversation now!`,
     parseMode: 'HTML',
-    replyMarkup: markup,
+    replyMarkup: systemMainMenuMarkup(context.platform),
   });
 };
 
@@ -166,7 +188,7 @@ export const handleSessionStatus: ActionHandler = async (context) => {
       type: 'text',
       text: '📊 <b>Session Status</b>\n\nNo active session.\n\nSend a message to start a new conversation, or tap the "New Chat" button.',
       parseMode: 'HTML',
-      replyMarkup: createSessionControlKeyboard(),
+      replyMarkup: systemSessionControlMarkup(context.platform),
     });
   }
 
@@ -177,7 +199,7 @@ export const handleSessionStatus: ActionHandler = async (context) => {
     type: 'text',
     text: ['📊 <b>Session Status</b>', '', `🤖 Agent: <code>${session.agentType}</code>`, `⏱ Duration: ${duration} min`, `📝 Last activity: ${lastActivity} sec ago`, `🔖 Session ID: <code>${session.id.slice(-8)}</code>`].join('\n'),
     parseMode: 'HTML',
-    replyMarkup: createSessionControlKeyboard(),
+    replyMarkup: systemSessionControlMarkup(context.platform),
   });
 };
 
@@ -196,7 +218,7 @@ export const handleHelpShow: ActionHandler = async (context) => {
     type: 'text',
     text: ['❓ <b>Margay Assistant</b>', '', 'A remote assistant to interact with Margay via Telegram.', '', '<b>Common Actions:</b>', '• 🆕 New Chat - Start a new session', '• 📊 Status - View current session status', '• ❓ Help - Show this help message', '', 'Send a message to chat with the AI assistant.'].join('\n'),
     parseMode: 'HTML',
-    replyMarkup: createHelpKeyboard(),
+    replyMarkup: systemHelpMarkup(context.platform),
   });
 };
 
@@ -215,7 +237,7 @@ export const handleHelpFeatures: ActionHandler = async (context) => {
     type: 'text',
     text: ['🤖 <b>Features</b>', '', '<b>AI Chat</b>', '• Natural language conversation', '• Streaming output, real-time display', '• Context memory support', '', '<b>Session Management</b>', '• Single session mode', '• Clear context anytime', '• View session status', '', '<b>Message Actions</b>', '• Copy reply content', '• Regenerate reply', '• Continue conversation'].join('\n'),
     parseMode: 'HTML',
-    replyMarkup: createHelpKeyboard(),
+    replyMarkup: systemHelpMarkup(context.platform),
   });
 };
 
@@ -234,7 +256,7 @@ export const handleHelpPairing: ActionHandler = async (context) => {
     type: 'text',
     text: ['🔗 <b>Pairing Guide</b>', '', '<b>First-time Setup:</b>', '1. Send any message to the bot', '2. Bot displays pairing code', '3. Approve pairing in Margay settings', '4. Ready to use after pairing', '', '<b>Notes:</b>', '• Pairing code valid for 10 minutes', '• Margay app must be running', '• One Telegram account can only pair once'].join('\n'),
     parseMode: 'HTML',
-    replyMarkup: createHelpKeyboard(),
+    replyMarkup: systemHelpMarkup(context.platform),
   });
 };
 
@@ -253,7 +275,7 @@ export const handleHelpTips: ActionHandler = async (context) => {
     type: 'text',
     text: ['💬 <b>Tips</b>', '', '<b>Effective Conversations:</b>', '• Be clear and specific', '• Feel free to ask follow-ups', '• Regenerate if not satisfied', '', '<b>Quick Actions:</b>', '• Use bottom buttons for quick access', '• Tap message buttons for actions', '• New chat clears history context'].join('\n'),
     parseMode: 'HTML',
-    replyMarkup: createHelpKeyboard(),
+    replyMarkup: systemHelpMarkup(context.platform),
   });
 };
 
@@ -272,7 +294,7 @@ export const handleSettingsShow: ActionHandler = async (context) => {
     type: 'text',
     text: ['⚙️ <b>Settings</b>', '', 'Channel settings need to be configured in the Margay app.', '', 'Open Margay → WebUI → Channels'].join('\n'),
     parseMode: 'HTML',
-    replyMarkup: createMainMenuKeyboard(),
+    replyMarkup: systemMainMenuMarkup(context.platform),
   });
 };
 
@@ -312,7 +334,7 @@ export const handleAgentShow: ActionHandler = async (context) => {
     type: 'text',
     text: ['🔄 <b>Switch Agent</b>', '', 'Select an AI agent for your conversations:', '', `Current: <b>${getAgentDisplayName(currentAgent)}</b>`].join('\n'),
     parseMode: 'HTML',
-    replyMarkup: createAgentSelectionKeyboard(availableAgents, currentAgent),
+    replyMarkup: context.platform === 'telegram' ? createAgentSelectionKeyboard(availableAgents, currentAgent) : undefined,
   });
 };
 
@@ -345,7 +367,7 @@ export const handleAgentSelect: ActionHandler = async (context, params) => {
 
   // If same agent, no need to switch
   if (existingSession?.agentType === newAgentType) {
-    const markup = context.platform === 'lark' ? createMainMenuCard() : createMainMenuKeyboard();
+    const markup = systemMainMenuMarkup(context.platform);
     return createSuccessResponse({
       type: 'text',
       text: `✓ Already using <b>${getAgentDisplayName(newAgentType)}</b>`,
@@ -375,7 +397,7 @@ export const handleAgentSelect: ActionHandler = async (context, params) => {
 
   console.log(`[SystemActions] Switched agent to ${newAgentType} for user ${context.channelUser.id}`);
 
-  const markup = context.platform === 'lark' ? createMainMenuCard() : createMainMenuKeyboard();
+  const markup = systemMainMenuMarkup(context.platform);
   return createSuccessResponse({
     type: 'text',
     text: [`✓ <b>Switched to ${getAgentDisplayName(newAgentType)}</b>`, '', 'A new conversation has been started.', '', 'Send a message to begin!'].join('\n'),

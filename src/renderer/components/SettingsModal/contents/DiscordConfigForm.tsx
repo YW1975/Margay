@@ -61,26 +61,7 @@ const SectionHeader: React.FC<{ title: string; action?: React.ReactNode }> = ({ 
   </div>
 );
 
-/**
- * Status badge component
- */
-const StatusBadge: React.FC<{ status: 'running' | 'stopped' | 'error' | string; text?: string }> = ({ status, text }) => {
-  const colors = {
-    running: 'bg-green-500/20 text-green-600',
-    stopped: 'bg-gray-500/20 text-gray-500',
-    error: 'bg-red-500/20 text-red-600',
-  };
-
-  const defaultTexts = {
-    running: 'Running',
-    stopped: 'Stopped',
-    error: 'Error',
-  };
-
-  return <span className={`px-8px py-2px rd-4px text-12px ${colors[status as keyof typeof colors] || colors.stopped}`}>{text || defaultTexts[status as keyof typeof defaultTexts] || status}</span>;
-};
-
-interface TelegramConfigFormProps {
+interface DiscordConfigFormProps {
   pluginStatus: IChannelPluginStatus | null;
   modelList: IProvider[];
   selectedModel: TProviderWithModel | null;
@@ -88,10 +69,10 @@ interface TelegramConfigFormProps {
   onModelChange: (model: TProviderWithModel | null) => void;
 }
 
-const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({ pluginStatus, modelList, selectedModel, onStatusChange, onModelChange }) => {
+const DiscordConfigForm: React.FC<DiscordConfigFormProps> = ({ pluginStatus, modelList, selectedModel, onStatusChange, onModelChange }) => {
   const { t } = useTranslation();
 
-  const [telegramToken, setTelegramToken] = useState('');
+  const [discordToken, setDiscordToken] = useState('');
   const [testLoading, setTestLoading] = useState(false);
   const [tokenTested, setTokenTested] = useState(false);
   const [testedBotUsername, setTestedBotUsername] = useState<string | null>(null);
@@ -100,31 +81,31 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({ pluginStatus, m
   const [pendingPairings, setPendingPairings] = useState<IChannelPairingRequest[]>([]);
   const [authorizedUsers, setAuthorizedUsers] = useState<IChannelUser[]>([]);
 
-  // Load pending pairings
+  // Load pending pairings (filtered by discord platform)
   const loadPendingPairings = useCallback(async () => {
     setPairingLoading(true);
     try {
       const result = await channel.getPendingPairings.invoke();
       if (result.success && result.data) {
-        setPendingPairings(result.data);
+        setPendingPairings(result.data.filter((p) => p.platformType === 'discord'));
       }
     } catch (error) {
-      console.error('[ChannelSettings] Failed to load pending pairings:', error);
+      console.error('[DiscordConfig] Failed to load pending pairings:', error);
     } finally {
       setPairingLoading(false);
     }
   }, []);
 
-  // Load authorized users
+  // Load authorized users (filtered by discord platform)
   const loadAuthorizedUsers = useCallback(async () => {
     setUsersLoading(true);
     try {
       const result = await channel.getAuthorizedUsers.invoke();
       if (result.success && result.data) {
-        setAuthorizedUsers(result.data);
+        setAuthorizedUsers(result.data.filter((u) => u.platformType === 'discord'));
       }
     } catch (error) {
-      console.error('[ChannelSettings] Failed to load authorized users:', error);
+      console.error('[DiscordConfig] Failed to load authorized users:', error);
     } finally {
       setUsersLoading(false);
     }
@@ -136,9 +117,10 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({ pluginStatus, m
     void loadAuthorizedUsers();
   }, [loadPendingPairings, loadAuthorizedUsers]);
 
-  // Listen for pairing requests
+  // Listen for pairing requests (discord only)
   useEffect(() => {
     const unsubscribe = channel.pairingRequested.on((request) => {
+      if (request.platformType !== 'discord') return;
       setPendingPairings((prev) => {
         const exists = prev.some((p) => p.code === request.code);
         if (exists) return prev;
@@ -148,9 +130,10 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({ pluginStatus, m
     return () => unsubscribe();
   }, []);
 
-  // Listen for user authorization
+  // Listen for user authorization (discord only)
   useEffect(() => {
     const unsubscribe = channel.userAuthorized.on((user) => {
+      if (user.platformType !== 'discord') return;
       setAuthorizedUsers((prev) => {
         const exists = prev.some((u) => u.id === user.id);
         if (exists) return prev;
@@ -161,10 +144,10 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({ pluginStatus, m
     return () => unsubscribe();
   }, []);
 
-  // Test Telegram connection
+  // Test Discord connection
   const handleTestConnection = async () => {
-    if (!telegramToken.trim()) {
-      Message.warning(t('settings.assistant.tokenRequired', 'Please enter a bot token'));
+    if (!discordToken.trim()) {
+      Message.warning(t('settings.discord.tokenRequired', 'Please enter a bot token'));
       return;
     }
 
@@ -173,24 +156,24 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({ pluginStatus, m
     setTestedBotUsername(null);
     try {
       const result = await channel.testPlugin.invoke({
-        pluginId: 'telegram_default',
-        credentials: { token: telegramToken.trim() },
+        pluginId: 'discord_default',
+        credentials: { token: discordToken.trim() },
       });
 
       if (result.success && result.data?.success) {
         setTokenTested(true);
         setTestedBotUsername(result.data.botUsername || null);
-        Message.success(t('settings.assistant.connectionSuccess', `Connected! Bot: @${result.data.botUsername || 'unknown'}`));
+        Message.success(t('settings.discord.connectionSuccess', `Connected! Bot: ${result.data.botUsername || 'unknown'}`));
 
         // Auto-enable bot after successful test
         await handleAutoEnable();
       } else {
         setTokenTested(false);
-        Message.error(result.data?.error || t('settings.assistant.connectionFailed', 'Connection failed'));
+        Message.error(result.data?.error || t('settings.discord.connectionFailed', 'Connection failed'));
       }
     } catch (error: any) {
       setTokenTested(false);
-      Message.error(error.message || t('settings.assistant.connectionFailed', 'Connection failed'));
+      Message.error(error.message || t('settings.discord.connectionFailed', 'Connection failed'));
     } finally {
       setTestLoading(false);
     }
@@ -200,26 +183,26 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({ pluginStatus, m
   const handleAutoEnable = async () => {
     try {
       const result = await channel.enablePlugin.invoke({
-        pluginId: 'telegram_default',
-        config: { token: telegramToken.trim() },
+        pluginId: 'discord_default',
+        config: { token: discordToken.trim() },
       });
 
       if (result.success) {
-        Message.success(t('settings.assistant.pluginEnabled', 'Telegram bot enabled'));
+        Message.success(t('settings.discord.pluginEnabled', 'Discord bot enabled'));
         const statusResult = await channel.getPluginStatus.invoke();
         if (statusResult.success && statusResult.data) {
-          const telegramPlugin = statusResult.data.find((p) => p.type === 'telegram');
-          onStatusChange(telegramPlugin || null);
+          const discordPlugin = statusResult.data.find((p) => p.type === 'discord');
+          onStatusChange(discordPlugin || null);
         }
       }
     } catch (error: any) {
-      console.error('[ChannelSettings] Auto-enable failed:', error);
+      console.error('[DiscordConfig] Auto-enable failed:', error);
     }
   };
 
   // Reset token tested state when token changes
   const handleTokenChange = (value: string) => {
-    setTelegramToken(value);
+    setDiscordToken(value);
     setTokenTested(false);
     setTestedBotUsername(null);
   };
@@ -229,13 +212,13 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({ pluginStatus, m
     const newModel: TProviderWithModel = { ...provider, useModel: modelName };
     onModelChange(newModel);
     try {
-      await ConfigStorage.set('assistant.telegram.defaultModel', {
+      await ConfigStorage.set('assistant.discord.defaultModel' as 'assistant.telegram.defaultModel', {
         id: provider.id,
         useModel: modelName,
       });
       Message.success(t('settings.assistant.modelSaved', 'Model saved'));
     } catch (error) {
-      console.error('[ChannelSettings] Failed to save model:', error);
+      console.error('[DiscordConfig] Failed to save model:', error);
       Message.error(t('settings.assistant.modelSaveFailed', 'Failed to save model'));
     }
   };
@@ -305,16 +288,16 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({ pluginStatus, m
 
   return (
     <div className='flex flex-col gap-24px'>
-      <PreferenceRow label={t('settings.assistant.botToken', 'Bot Token')} description={t('settings.assistant.botTokenDesc', 'Open Telegram, find @BotFather and send /newbot to get your Bot Token.')}>
+      <PreferenceRow label={t('settings.discord.botToken', 'Bot Token')} description={t('settings.discord.botTokenDesc', 'Go to Discord Developer Portal, create an application, and get your Bot Token from the Bot section.')}>
         <div className='flex items-center gap-8px'>
-          <Input.Password value={telegramToken} onChange={handleTokenChange} placeholder={authorizedUsers.length > 0 || pluginStatus?.hasToken ? '••••••••••••••••' : '123456:ABC-DEF...'} style={{ width: 240 }} visibilityToggle disabled={authorizedUsers.length > 0} />
+          <Input.Password value={discordToken} onChange={handleTokenChange} placeholder={authorizedUsers.length > 0 || pluginStatus?.hasValidCredentials ? '••••••••••••••••' : 'MTIzNDU2Nzg5...'} style={{ width: 240 }} visibilityToggle disabled={authorizedUsers.length > 0} />
           <Button type='outline' loading={testLoading} onClick={handleTestConnection} disabled={authorizedUsers.length > 0}>
             {t('settings.assistant.testConnection', 'Test')}
           </Button>
         </div>
       </PreferenceRow>
 
-      <PreferenceRow label={t('settings.assistant.defaultModel', 'Default Model')} description={t('settings.assistant.defaultModelDesc', 'Model used for Telegram conversations')}>
+      <PreferenceRow label={t('settings.assistant.defaultModel', 'Default Model')} description={t('settings.discord.defaultModelDesc', 'Model used for Discord conversations')}>
         <Dropdown
           trigger='click'
           position='br'
@@ -363,27 +346,22 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({ pluginStatus, m
           <SectionHeader title={t('settings.assistant.nextSteps', 'Next Steps')} />
           <div className='text-14px text-t-secondary space-y-8px'>
             <p className='m-0'>
-              <strong>1.</strong> {t('settings.assistant.step1', 'Open Telegram and search for your bot')}
-              {pluginStatus.botUsername && (
-                <span className='ml-4px'>
-                  <code className='bg-fill-2 px-6px py-2px rd-4px'>@{pluginStatus.botUsername}</code>
-                </span>
-              )}
+              <strong>1.</strong> {t('settings.discord.step1', 'Invite the bot to your Discord server using the OAuth2 URL from the Developer Portal')}
             </p>
             <p className='m-0'>
-              <strong>2.</strong> {t('settings.assistant.step2', 'Send any message or click /start to initiate pairing')}
+              <strong>2.</strong> {t('settings.discord.step2', 'Send a DM to the bot, or @mention the bot in a server channel')}
             </p>
             <p className='m-0'>
-              <strong>3.</strong> {t('settings.assistant.step3', 'A pairing request will appear below. Click "Approve" to authorize the user.')}
+              <strong>3.</strong> {t('settings.discord.step3', 'A pairing request will appear below. Click "Approve" to authorize the user.')}
             </p>
             <p className='m-0'>
-              <strong>4.</strong> {t('settings.assistant.step4', 'Once approved, you can start chatting with Gemini through Telegram!')}
+              <strong>4.</strong> {t('settings.discord.step4', 'Once approved, you can start chatting with the AI assistant through Discord!')}
             </p>
           </div>
         </div>
       )}
 
-      {/* Pending Pairings - show when bot is enabled and no authorized users yet */}
+      {/* Pending Pairings */}
       {pluginStatus?.enabled && authorizedUsers.length === 0 && (
         <div className='bg-fill-1 rd-12px pt-16px pr-16px pb-16px pl-0'>
           <SectionHeader
@@ -435,7 +413,7 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({ pluginStatus, m
         </div>
       )}
 
-      {/* Authorized Users - show when there are authorized users */}
+      {/* Authorized Users */}
       {authorizedUsers.length > 0 && (
         <div className='bg-fill-1 rd-12px pt-16px pr-16px pb-16px pl-0'>
           <SectionHeader
@@ -460,7 +438,7 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({ pluginStatus, m
                   <div className='flex-1'>
                     <div className='text-14px font-500 text-t-primary'>{user.displayName || 'Unknown User'}</div>
                     <div className='text-12px text-t-tertiary mt-4px'>
-                      {t('settings.assistant.platform', 'Platform')}: {user.platformType}
+                      {t('settings.assistant.platform', 'Platform')}: Discord
                       <span className='mx-8px'>|</span>
                       {t('settings.assistant.authorizedAt', 'Authorized')}: {formatTime(user.authorizedAt)}
                     </div>
@@ -478,4 +456,4 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({ pluginStatus, m
   );
 };
 
-export default TelegramConfigForm;
+export default DiscordConfigForm;

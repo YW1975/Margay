@@ -6,23 +6,10 @@
 
 import { channel as channelBridge } from '@/common/ipcBridge';
 import { getDatabase } from '@/process/database';
+import { getDescriptor, hasValidCredentials } from '../core/registry';
 import type { SessionManager } from '../core/SessionManager';
 import type { BasePlugin, PluginMessageHandler, PluginConfirmHandler } from '../plugins/BasePlugin';
-import type { IChannelPluginConfig, IChannelPluginStatus, IUnifiedIncomingMessage, PluginType } from '../types';
-
-// Plugin registry - maps plugin types to their constructors
-// Will be populated when plugins are implemented
-type PluginConstructor = new () => BasePlugin;
-const pluginRegistry: Map<PluginType, PluginConstructor> = new Map();
-
-/**
- * Register a plugin type
- * Called during initialization to register available plugins
- */
-export function registerPlugin(type: PluginType, constructor: PluginConstructor): void {
-  pluginRegistry.set(type, constructor);
-  console.log(`[PluginManager] Registered plugin type: ${type}`);
-}
+import type { IChannelPluginConfig, IChannelPluginStatus, IUnifiedIncomingMessage } from '../types';
 
 /**
  * PluginManager - Manages lifecycle of all platform plugins
@@ -128,16 +115,16 @@ export class PluginManager {
       return;
     }
 
-    // Get plugin constructor from registry
-    const Constructor = pluginRegistry.get(type);
-    if (!Constructor) {
+    // Get plugin constructor from descriptor registry
+    const descriptor = getDescriptor(type);
+    if (!descriptor) {
       const errorMsg = `Unknown plugin type: ${type}`;
       this.pluginErrors.set(id, errorMsg);
       throw new Error(errorMsg);
     }
 
     // Create plugin instance
-    const plugin = new Constructor();
+    const plugin = new descriptor.pluginConstructor();
 
     try {
       // Initialize plugin
@@ -263,13 +250,8 @@ export class PluginManager {
     // 从插件实例或错误缓存中获取错误
     const errorMessage = plugin?.error ?? this.pluginErrors.get(config.id);
 
-    // Check credentials based on plugin type
-    let hasToken = false;
-    if (config.type === 'lark') {
-      hasToken = !!(config.credentials?.appId && config.credentials?.appSecret);
-    } else {
-      hasToken = !!config.credentials?.token;
-    }
+    // Check credentials via descriptor (generic, no per-platform branching)
+    const hasCredentials = hasValidCredentials(config.type, config.credentials);
 
     return {
       id: config.id,
@@ -282,7 +264,8 @@ export class PluginManager {
       error: errorMessage,
       activeUsers: plugin?.getActiveUserCount() ?? 0,
       botUsername: botInfo?.username,
-      hasToken,
+      hasValidCredentials: hasCredentials,
+      hasToken: hasCredentials, // backward compat
     };
   }
 
@@ -304,6 +287,7 @@ export class PluginManager {
    * 发送带错误的状态变化事件（当插件尚未创建时）
    */
   private emitStatusChangeWithError(pluginId: string, config: IChannelPluginConfig, errorMessage: string): void {
+    const hasCredentials = hasValidCredentials(config.type, config.credentials);
     const status: IChannelPluginStatus = {
       id: config.id,
       type: config.type,
@@ -315,7 +299,8 @@ export class PluginManager {
       error: errorMessage,
       activeUsers: 0,
       botUsername: undefined,
-      hasToken: !!config.credentials?.token,
+      hasValidCredentials: hasCredentials,
+      hasToken: hasCredentials,
     };
     channelBridge.pluginStatusChanged.emit({ pluginId, status });
   }

@@ -1,3 +1,4 @@
+import { ipcBridge } from '@/common';
 import { ConfigStorage } from '@/common/storage';
 import { STORAGE_KEYS } from '@/common/storageKeys';
 import FlexFullContainer from '@/renderer/components/FlexFullContainer';
@@ -6,9 +7,10 @@ import { useResizableSplit } from '@/renderer/hooks/useResizableSplit';
 import ConversationTabs from '@/renderer/pages/conversation/ConversationTabs';
 import { useConversationTabs } from '@/renderer/pages/conversation/context/ConversationTabsContext';
 import { PreviewPanel, usePreviewContext } from '@/renderer/pages/conversation/preview';
-import { Layout as ArcoLayout } from '@arco-design/web-react';
-import { ExpandLeft, ExpandRight, Robot } from '@icon-park/react';
-import React, { useEffect, useRef, useState } from 'react';
+import { Dropdown, Layout as ArcoLayout, Menu } from '@arco-design/web-react';
+import { Down, ExpandLeft, ExpandRight, Robot } from '@icon-park/react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import useSWR from 'swr';
 
 import AuggieLogo from '@/renderer/assets/logos/auggie.svg';
@@ -101,6 +103,8 @@ const ChatLayout: React.FC<{
   headerExtra?: React.ReactNode;
   headerLeft?: React.ReactNode;
   workspaceEnabled?: boolean;
+  /** Current workspace path, used for "fork to agent" navigation */
+  workspace?: string;
 }> = (props) => {
   // 工作空间面板折叠状态 - 全局持久化
   // Workspace panel collapse state - globally persisted
@@ -120,7 +124,7 @@ const ChatLayout: React.FC<{
   const currentConversationIdRef = useRef<string | undefined>(undefined);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(() => (typeof window === 'undefined' ? 0 : window.innerWidth));
-  const { backend, agentName, agentLogo, agentLogoIsEmoji, workspaceEnabled = true } = props;
+  const { backend, agentName, agentLogo, agentLogoIsEmoji, workspaceEnabled = true, workspace } = props;
   const layout = useLayoutContext();
   const isMacRuntime = isMacEnvironment();
   const isWindowsRuntime = isWindowsEnvironment();
@@ -142,6 +146,43 @@ const ChatLayout: React.FC<{
   // 获取 tabs 状态，有 tabs 时隐藏会话标题
   const { openTabs } = useConversationTabs();
   const hasTabs = openTabs.length > 0;
+
+  // B1: Agent badge dropdown — fetch available agents and navigate to new session
+  const navigate = useNavigate();
+  const { data: availableAgents } = useSWR('acp.agents.available.chatLayout', async () => {
+    const result = await ipcBridge.acpConversation.getAvailableAgents.invoke();
+    return result.success ? result.data.filter((a) => !(a.backend === 'gemini' && a.cliPath)) : [];
+  });
+  const currentBackendKey = backend || 'gemini';
+
+  const agentDropdownMenu = useMemo(() => {
+    if (!availableAgents || availableAgents.length <= 1) return null;
+    return (
+      <Menu
+        selectedKeys={[currentBackendKey]}
+        onClickMenuItem={(key) => {
+          if (key === currentBackendKey) return; // already on this agent
+          // Navigate to guid page directly (not '/' which redirects and drops state)
+          void navigate('/guid', { state: { workspace, agent: key } });
+        }}
+        className='min-w-160px'
+      >
+        {availableAgents
+          .filter((a) => a.backend !== 'custom')
+          .map((agent) => {
+            const logo = AGENT_LOGO_MAP[agent.backend as AcpBackend];
+            return (
+              <Menu.Item key={agent.backend}>
+                <div className='flex items-center gap-8px'>
+                  {logo ? <img src={logo} alt={agent.name} width={16} height={16} style={{ objectFit: 'contain' }} /> : <Robot theme='outline' size={16} />}
+                  <span>{agent.name}</span>
+                </div>
+              </Menu.Item>
+            );
+          })}
+      </Menu>
+    );
+  }, [availableAgents, currentBackendKey, navigate, workspace]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -406,12 +447,21 @@ const ChatLayout: React.FC<{
               <div className='flex items-center gap-12px'>
                 {/* headerExtra 会在右上角优先渲染，例如模型切换按钮 / headerExtra renders at top-right for items like model switchers */}
                 {props.headerExtra}
-                {(backend || agentLogo) && (
-                  <div className='ml-16px flex items-center gap-2 bg-2 w-fit rounded-full px-[8px] py-[2px]'>
-                    {agentLogo ? agentLogoIsEmoji ? <span className='text-sm'>{agentLogo}</span> : <img src={agentLogo} alt={`${agentName || 'agent'} logo`} width={16} height={16} style={{ objectFit: 'contain' }} /> : AGENT_LOGO_MAP[backend as AcpBackend] ? <img src={AGENT_LOGO_MAP[backend as AcpBackend]} alt={`${backend} logo`} width={16} height={16} style={{ objectFit: 'contain' }} /> : <Robot theme='outline' size={16} fill={iconColors.primary} />}
-                    <span className='text-sm'>{displayName}</span>
-                  </div>
-                )}
+                {(backend || agentLogo) &&
+                  (agentDropdownMenu ? (
+                    <Dropdown trigger='click' droplist={agentDropdownMenu}>
+                      <div className='ml-16px flex items-center gap-2 bg-2 w-fit rounded-full px-[8px] py-[2px] cursor-pointer hover:bg-3 transition-colors'>
+                        {agentLogo ? agentLogoIsEmoji ? <span className='text-sm'>{agentLogo}</span> : <img src={agentLogo} alt={`${agentName || 'agent'} logo`} width={16} height={16} style={{ objectFit: 'contain' }} /> : AGENT_LOGO_MAP[backend as AcpBackend] ? <img src={AGENT_LOGO_MAP[backend as AcpBackend]} alt={`${backend} logo`} width={16} height={16} style={{ objectFit: 'contain' }} /> : <Robot theme='outline' size={16} fill={iconColors.primary} />}
+                        <span className='text-sm'>{displayName}</span>
+                        <Down theme='outline' size={10} />
+                      </div>
+                    </Dropdown>
+                  ) : (
+                    <div className='ml-16px flex items-center gap-2 bg-2 w-fit rounded-full px-[8px] py-[2px]'>
+                      {agentLogo ? agentLogoIsEmoji ? <span className='text-sm'>{agentLogo}</span> : <img src={agentLogo} alt={`${agentName || 'agent'} logo`} width={16} height={16} style={{ objectFit: 'contain' }} /> : AGENT_LOGO_MAP[backend as AcpBackend] ? <img src={AGENT_LOGO_MAP[backend as AcpBackend]} alt={`${backend} logo`} width={16} height={16} style={{ objectFit: 'contain' }} /> : <Robot theme='outline' size={16} fill={iconColors.primary} />}
+                      <span className='text-sm'>{displayName}</span>
+                    </div>
+                  ))}
                 {isWindowsRuntime && workspaceEnabled && (
                   <button type='button' className='workspace-header__toggle' aria-label='Toggle workspace' onClick={() => dispatchWorkspaceToggleEvent()}>
                     {rightSiderCollapsed ? <ExpandRight size={16} /> : <ExpandLeft size={16} />}

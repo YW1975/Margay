@@ -4,5 +4,5 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export { PluginManager, registerPlugin } from './PluginManager';
+export { PluginManager } from './PluginManager';
 export { ActionExecutor } from './ActionExecutor';

@@ -20,43 +20,40 @@ import { createPairingCard, createPairingStatusCard, createMainMenuCard, createP
 // ==================== Platform-specific Markup Helpers ====================
 
 /**
- * Get main menu markup based on platform
+ * Get main menu markup based on platform.
+ * Platforms without native keyboards return undefined.
  */
 function getMainMenuMarkup(platform: string) {
-  if (platform === 'lark') {
-    return createMainMenuCard();
-  }
-  return createMainMenuKeyboard();
+  if (platform === 'lark') return createMainMenuCard();
+  if (platform === 'telegram') return createMainMenuKeyboard();
+  return undefined;
 }
 
 /**
  * Get pairing code markup based on platform
  */
 function getPairingCodeMarkup(platform: string, code: string) {
-  if (platform === 'lark') {
-    return createPairingCard(code);
-  }
-  return createPairingCodeKeyboard();
+  if (platform === 'lark') return createPairingCard(code);
+  if (platform === 'telegram') return createPairingCodeKeyboard();
+  return undefined;
 }
 
 /**
  * Get pairing status markup based on platform
  */
 function getPairingStatusMarkup(platform: string, code: string) {
-  if (platform === 'lark') {
-    return createPairingStatusCard(code);
-  }
-  return createPairingStatusKeyboard();
+  if (platform === 'lark') return createPairingStatusCard(code);
+  if (platform === 'telegram') return createPairingStatusKeyboard();
+  return undefined;
 }
 
 /**
  * Get pairing help markup based on platform
  */
 function getPairingHelpMarkup(platform: string) {
-  if (platform === 'lark') {
-    return createPairingHelpCard();
-  }
-  return createPairingCodeKeyboard();
+  if (platform === 'lark') return createPairingHelpCard();
+  if (platform === 'telegram') return createPairingCodeKeyboard();
+  return undefined;
 }
 
 /**

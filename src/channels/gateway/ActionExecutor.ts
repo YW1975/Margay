@@ -9,65 +9,74 @@ import { getDatabase } from '@/process/database';
 import { ConversationService } from '@/process/services/conversationService';
 import { buildChatErrorResponse, chatActions } from '../actions/ChatActions';
 import { handlePairingShow, platformActions } from '../actions/PlatformActions';
-import { getTelegramDefaultModel, systemActions } from '../actions/SystemActions';
+import { getChannelDefaultModel, systemActions } from '../actions/SystemActions';
 import type { IActionContext, IRegisteredAction } from '../actions/types';
 import { getChannelMessageService } from '../agent/ChannelMessageService';
 import type { SessionManager } from '../core/SessionManager';
 import type { PairingService } from '../pairing/PairingService';
 import type { PluginMessageHandler } from '../plugins/BasePlugin';
+import { buildResponseActionsRow, buildToolConfirmationRow, buildErrorRecoveryRow } from '../plugins/discord/DiscordKeyboards';
 import { createMainMenuCard, createErrorRecoveryCard, createResponseActionsCard, createToolConfirmationCard } from '../plugins/lark/LarkCards';
 import { convertHtmlToLarkMarkdown } from '../plugins/lark/LarkAdapter';
 import { createMainMenuKeyboard, createResponseActionsKeyboard, createToolConfirmationKeyboard } from '../plugins/telegram/TelegramKeyboards';
 import { escapeHtml } from '../plugins/telegram/TelegramAdapter';
-import type { IUnifiedIncomingMessage, IUnifiedOutgoingMessage, PluginType } from '../types';
+import type { IUnifiedIncomingMessage, IUnifiedOutgoingMessage } from '../types';
 import type { PluginManager } from './PluginManager';
 
 // ==================== Platform-specific Helpers ====================
 
 /**
- * Get main menu reply markup based on platform
+ * Get main menu reply markup based on platform.
+ * Platforms without a native keyboard/card return undefined.
  */
-function getMainMenuMarkup(platform: PluginType) {
-  if (platform === 'lark') {
-    return createMainMenuCard();
-  }
-  return createMainMenuKeyboard();
+function getMainMenuMarkup(platform: string) {
+  if (platform === 'lark') return createMainMenuCard();
+  if (platform === 'telegram') return createMainMenuKeyboard();
+  return undefined; // Discord etc. — buttons are attached at message level by the plugin
 }
 
 /**
  * Get response actions markup based on platform
  */
-function getResponseActionsMarkup(platform: PluginType, text?: string) {
-  if (platform === 'lark') {
-    return createResponseActionsCard(text || '');
-  }
-  return createResponseActionsKeyboard();
+function getResponseActionsMarkup(platform: string, text?: string) {
+  if (platform === 'lark') return createResponseActionsCard(text || '');
+  if (platform === 'telegram') return createResponseActionsKeyboard();
+  if (platform === 'discord') return buildResponseActionsRow();
+  return undefined;
 }
 
 /**
  * Get tool confirmation markup based on platform
  */
-function getToolConfirmationMarkup(platform: PluginType, callId: string, options: Array<{ label: string; value: string }>, title?: string, description?: string) {
-  if (platform === 'lark') {
-    return createToolConfirmationCard(callId, title || 'Confirmation', description || 'Please confirm', options);
-  }
-  return createToolConfirmationKeyboard(callId, options);
+function getToolConfirmationMarkup(platform: string, callId: string, options: Array<{ label: string; value: string }>, title?: string, description?: string) {
+  if (platform === 'lark') return createToolConfirmationCard(callId, title || 'Confirmation', description || 'Please confirm', options);
+  if (platform === 'telegram') return createToolConfirmationKeyboard(callId, options);
+  if (platform === 'discord') return buildToolConfirmationRow(callId, options);
+  return undefined;
 }
 
 /**
  * Get error recovery markup based on platform
  */
-function getErrorRecoveryMarkup(platform: PluginType, errorMessage?: string) {
-  if (platform === 'lark') {
-    return createErrorRecoveryCard(errorMessage);
-  }
-  return createMainMenuKeyboard(); // Telegram uses main menu for recovery
+function getErrorRecoveryMarkup(platform: string, errorMessage?: string) {
+  if (platform === 'lark') return createErrorRecoveryCard(errorMessage);
+  if (platform === 'telegram') return createMainMenuKeyboard();
+  if (platform === 'discord') return buildErrorRecoveryRow();
+  return undefined;
+}
+
+/**
+ * Get the stream edit throttle interval (ms) for the given platform.
+ */
+function getStreamThrottleMs(platform: string): number {
+  if (platform === 'discord') return 1000; // Discord: 5 edits / 5s shared bucket
+  return 500; // Telegram, Lark, etc.
 }
 
 /**
  * Escape/format text for platform
  */
-function formatTextForPlatform(text: string, platform: PluginType): string {
+function formatTextForPlatform(text: string, platform: string): string {
   if (platform === 'lark') {
     return convertHtmlToLarkMarkdown(text);
   }
@@ -134,7 +143,7 @@ function getConfirmationPrompt(details: { type: string; title?: string; [key: st
  * 将 TMessage 转换为 IUnifiedOutgoingMessage
  * Convert TMessage to IUnifiedOutgoingMessage for platform
  */
-function convertTMessageToOutgoing(message: TMessage, platform: PluginType, isComplete = false): IUnifiedOutgoingMessage {
+function convertTMessageToOutgoing(message: TMessage, platform: string, isComplete = false): IUnifiedOutgoingMessage {
   switch (message.type) {
     case 'text': {
       // 根据平台格式化文本
@@ -319,12 +328,12 @@ export class ActionExecutor {
       let session = this.sessionManager.getSession(channelUser.id);
       if (!session || !session.conversationId) {
         // 获取用户选择的模型 / Get user selected model
-        const model = await getTelegramDefaultModel();
+        const model = await getChannelDefaultModel(platform);
 
         // 使用 ConversationService 获取或创建会话（根据平台）
         // Use ConversationService to get or create conversation (based on platform)
-        const conversationName = platform === 'lark' ? 'Lark Assistant' : 'Telegram Assistant';
-        const result = await ConversationService.getOrCreateTelegramConversation({
+        const conversationName = `${platform.charAt(0).toUpperCase() + platform.slice(1)} Assistant`;
+        const result = await ConversationService.getOrCreateChannelConversation(platform, {
           model,
           name: conversationName,
         });
@@ -363,7 +372,7 @@ export class ActionExecutor {
           type: 'text',
           text: 'This message type is not supported. Please send a text message.',
           parseMode: 'HTML',
-          replyMarkup: getMainMenuMarkup(platform as PluginType),
+          replyMarkup: getMainMenuMarkup(platform),
         });
       }
     } catch (error: any) {
@@ -372,7 +381,7 @@ export class ActionExecutor {
         type: 'text',
         text: `❌ Error processing message: ${error.message}`,
         parseMode: 'HTML',
-        replyMarkup: getErrorRecoveryMarkup(platform as PluginType, error.message),
+        replyMarkup: getErrorRecoveryMarkup(platform, error.message),
       });
     }
   }
@@ -440,7 +449,7 @@ export class ActionExecutor {
       // 节流控制：使用定时器机制确保最后一条消息能被发送
       // Throttle control: use timer mechanism to ensure last message is sent
       let lastUpdateTime = 0;
-      const UPDATE_THROTTLE_MS = 500; // Update at most every 500ms
+      const UPDATE_THROTTLE_MS = getStreamThrottleMs(context.platform);
       let pendingUpdateTimer: ReturnType<typeof setTimeout> | null = null;
       let pendingMessage: IUnifiedOutgoingMessage | null = null;
 
@@ -473,7 +482,7 @@ export class ActionExecutor {
 
         // 转换消息格式（根据平台）
         // Convert message format (based on platform)
-        const outgoingMessage = convertTMessageToOutgoing(message, context.platform as PluginType, false);
+        const outgoingMessage = convertTMessageToOutgoing(message, context.platform, false);
 
         // 保存最后一条消息内容
         // Save last message content
@@ -579,7 +588,7 @@ export class ActionExecutor {
       try {
         // 使用最后一条消息的实际内容，添加操作按钮（根据平台）
         // Use actual content of last message, add action buttons (based on platform)
-        const responseMarkup = getResponseActionsMarkup(context.platform as PluginType, lastMessageContent?.text);
+        const responseMarkup = getResponseActionsMarkup(context.platform, lastMessageContent?.text);
         const finalMessage: IUnifiedOutgoingMessage = lastMessageContent ? { ...lastMessageContent, replyMarkup: responseMarkup } : { type: 'text', text: '✅ Done', parseMode: 'HTML', replyMarkup: responseMarkup };
         await context.editMessage(lastMsgId, finalMessage);
       } catch {
@@ -590,7 +599,7 @@ export class ActionExecutor {
       console.error(`[ActionExecutor] Chat processing failed:`, error);
 
       // Update message with error
-      const errorResponse = buildChatErrorResponse(error.message);
+      const errorResponse = buildChatErrorResponse(error.message, context.platform);
       await context.editMessage(thinkingMsgId, {
         type: 'text',
         text: errorResponse.text,

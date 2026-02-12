@@ -7,9 +7,11 @@
 // ==================== Plugin Types ====================
 
 /**
- * Supported platform types for plugins
+ * Platform type identifier — open string so new platforms can be added
+ * without modifying this type.
+ * Well-known values: 'telegram', 'slack', 'discord', 'lark'
  */
-export type PluginType = 'telegram' | 'slack' | 'discord' | 'lark';
+export type PluginType = string;
 
 /**
  * Plugin connection status
@@ -17,16 +19,84 @@ export type PluginType = 'telegram' | 'slack' | 'discord' | 'lark';
 export type PluginStatus = 'created' | 'initializing' | 'ready' | 'starting' | 'running' | 'stopping' | 'stopped' | 'error';
 
 /**
- * Plugin credentials (stored encrypted in database)
+ * Plugin credentials — generic string record.
+ * Each platform's descriptor declares what fields it requires via ICredentialField[].
  */
-export interface IPluginCredentials {
-  // Telegram
-  token?: string;
-  // Lark/Feishu
-  appId?: string;
-  appSecret?: string;
-  encryptKey?: string;
-  verificationToken?: string;
+export type IPluginCredentials = Record<string, string>;
+
+// ==================== Plugin Descriptor ====================
+
+/**
+ * Connection mode supported by a platform
+ */
+export type PluginConnectionMode = 'polling' | 'webhook' | 'websocket';
+
+/**
+ * A single credential field declared by a plugin descriptor
+ */
+export interface ICredentialField {
+  /** Machine key used in IPluginCredentials, e.g. 'token', 'appId' */
+  key: string;
+  /** Human-readable label for the UI, e.g. 'Bot Token' */
+  label: string;
+  /** Whether this field must be filled before the plugin can be enabled */
+  required: boolean;
+  /** If true, the UI renders a password-style input */
+  secret?: boolean;
+  /** Placeholder / help text shown in the input */
+  placeholder?: string;
+}
+
+/**
+ * Test-connection result returned by a descriptor's testConnection()
+ */
+export interface ITestConnectionResult {
+  success: boolean;
+  /** Bot display name or username discovered during test */
+  botUsername?: string;
+  error?: string;
+}
+
+/**
+ * Declarative descriptor for a channel platform plugin.
+ *
+ * Every platform registers one IPluginDescriptor so the UI, IPC bridge,
+ * ChannelManager, and PluginManager can handle it generically without
+ * per-platform if-else branches.
+ */
+export interface IPluginDescriptor {
+  /** Unique platform identifier, e.g. 'telegram', 'lark' */
+  type: string;
+  /** Human-readable display name, e.g. 'Telegram' */
+  displayName: string;
+  /** Short description shown in the Settings UI */
+  description?: string;
+  /** Connection modes supported by this platform */
+  connectionModes: PluginConnectionMode[];
+  /** Default connection mode */
+  defaultConnectionMode: PluginConnectionMode;
+  /** Credential fields the UI should render */
+  credentialFields: ICredentialField[];
+  /**
+   * Test connection using the provided credentials.
+   * Called from both the IPC bridge (testPlugin) and ChannelManager.
+   */
+  testConnection(credentials: IPluginCredentials): Promise<ITestConnectionResult>;
+  /** Constructor for creating plugin instances */
+  pluginConstructor: new () => import('./plugins/BasePlugin').BasePlugin;
+}
+
+/**
+ * Serializable subset of IPluginDescriptor for IPC transport to the renderer.
+ * Excludes functions (testConnection, pluginConstructor).
+ */
+export interface IPluginDescriptorInfo {
+  type: string;
+  displayName: string;
+  description?: string;
+  connectionModes: PluginConnectionMode[];
+  defaultConnectionMode: PluginConnectionMode;
+  credentialFields: ICredentialField[];
 }
 
 /**
@@ -69,7 +139,9 @@ export interface IChannelPluginStatus {
   error?: string;
   activeUsers: number;
   botUsername?: string;
-  /** Whether the plugin has a token configured (token itself is not exposed for security) */
+  /** Whether the plugin has valid credentials configured (credentials themselves are not exposed) */
+  hasValidCredentials?: boolean;
+  /** @deprecated Use hasValidCredentials instead */
   hasToken?: boolean;
 }
 

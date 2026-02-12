@@ -20,6 +20,7 @@ import useSWR from 'swr';
 import { useSettingsViewMode } from '../settingsViewContext';
 import ChannelItem from './channels/ChannelItem';
 import type { ChannelConfig } from './channels/types';
+import DiscordConfigForm from './DiscordConfigForm';
 import LarkConfigForm from './LarkConfigForm';
 import TelegramConfigForm from './TelegramConfigForm';
 
@@ -97,9 +98,11 @@ const ChannelModalContent: React.FC = () => {
   // Plugin state
   const [pluginStatus, setPluginStatus] = useState<IChannelPluginStatus | null>(null);
   const [larkPluginStatus, setLarkPluginStatus] = useState<IChannelPluginStatus | null>(null);
+  const [discordPluginStatus, setDiscordPluginStatus] = useState<IChannelPluginStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [enableLoading, setEnableLoading] = useState(false);
   const [larkEnableLoading, setLarkEnableLoading] = useState(false);
+  const [discordEnableLoading, setDiscordEnableLoading] = useState(false);
 
   // Collapse state - true means collapsed (closed), false means expanded (open)
   const [collapseKeys, setCollapseKeys] = useState<Record<string, boolean>>({
@@ -113,6 +116,7 @@ const ChannelModalContent: React.FC = () => {
   const { modelList } = useChannelModelList();
   const [selectedModel, setSelectedModel] = useState<TProviderWithModel | null>(null);
   const [larkSelectedModel, setLarkSelectedModel] = useState<TProviderWithModel | null>(null);
+  const [discordSelectedModel, setDiscordSelectedModel] = useState<TProviderWithModel | null>(null);
 
   // Load plugin status
   const loadPluginStatus = useCallback(async () => {
@@ -122,8 +126,10 @@ const ChannelModalContent: React.FC = () => {
       if (result.success && result.data) {
         const telegramPlugin = result.data.find((p) => p.type === 'telegram');
         const larkPlugin = result.data.find((p) => p.type === 'lark');
+        const discordPlugin = result.data.find((p) => p.type === 'discord');
         setPluginStatus(telegramPlugin || null);
         setLarkPluginStatus(larkPlugin || null);
+        setDiscordPluginStatus(discordPlugin || null);
       }
     } catch (error) {
       console.error('[ChannelSettings] Failed to load plugin status:', error);
@@ -160,6 +166,15 @@ const ChannelModalContent: React.FC = () => {
             setLarkSelectedModel({ ...provider, useModel: savedLarkModel.useModel });
           }
         }
+
+        // Load Discord model
+        const savedDiscordModel = await ConfigStorage.get('assistant.discord.defaultModel' as 'assistant.telegram.defaultModel');
+        if (savedDiscordModel && savedDiscordModel.id && savedDiscordModel.useModel) {
+          const provider = modelList.find((p) => p.id === savedDiscordModel.id);
+          if (provider && provider.model?.includes(savedDiscordModel.useModel)) {
+            setDiscordSelectedModel({ ...provider, useModel: savedDiscordModel.useModel });
+          }
+        }
       } catch (error) {
         console.error('[ChannelSettings] Failed to load saved model:', error);
       }
@@ -175,6 +190,8 @@ const ChannelModalContent: React.FC = () => {
         setPluginStatus(status);
       } else if (status.type === 'lark') {
         setLarkPluginStatus(status);
+      } else if (status.type === 'discord') {
+        setDiscordPluginStatus(status);
       }
     });
     return () => unsubscribe();
@@ -225,6 +242,45 @@ const ChannelModalContent: React.FC = () => {
       Message.error(error.message);
     } finally {
       setEnableLoading(false);
+    }
+  };
+
+  // Enable/Disable Discord plugin
+  const handleToggleDiscordPlugin = async (enabled: boolean) => {
+    setDiscordEnableLoading(true);
+    try {
+      if (enabled) {
+        if (!discordPluginStatus?.hasValidCredentials) {
+          Message.warning(t('settings.discord.tokenRequired', 'Please enter a bot token first'));
+          setDiscordEnableLoading(false);
+          return;
+        }
+
+        const result = await channel.enablePlugin.invoke({
+          pluginId: 'discord_default',
+          config: {},
+        });
+
+        if (result.success) {
+          Message.success(t('settings.discord.pluginEnabled', 'Discord bot enabled'));
+          await loadPluginStatus();
+        } else {
+          Message.error(result.msg || t('settings.discord.enableFailed', 'Failed to enable Discord plugin'));
+        }
+      } else {
+        const result = await channel.disablePlugin.invoke({ pluginId: 'discord_default' });
+
+        if (result.success) {
+          Message.success(t('settings.discord.pluginDisabled', 'Discord bot disabled'));
+          await loadPluginStatus();
+        } else {
+          Message.error(result.msg || t('settings.discord.disableFailed', 'Failed to disable Discord plugin'));
+        }
+      }
+    } catch (error: any) {
+      Message.error(error.message);
+    } finally {
+      setDiscordEnableLoading(false);
     }
   };
 
@@ -295,6 +351,19 @@ const ChannelModalContent: React.FC = () => {
       content: <LarkConfigForm pluginStatus={larkPluginStatus} modelList={modelList || []} selectedModel={larkSelectedModel} onStatusChange={setLarkPluginStatus} onModelChange={setLarkSelectedModel} />,
     };
 
+    const discordChannel: ChannelConfig = {
+      id: 'discord',
+      title: t('channels.discordTitle', 'Discord'),
+      description: t('channels.discordDesc', 'Chat with Margay assistant via Discord'),
+      status: 'active',
+      enabled: discordPluginStatus?.enabled || false,
+      disabled: discordEnableLoading,
+      isConnected: discordPluginStatus?.connected || false,
+      botUsername: discordPluginStatus?.botUsername,
+      defaultModel: discordSelectedModel?.useModel,
+      content: <DiscordConfigForm pluginStatus={discordPluginStatus} modelList={modelList || []} selectedModel={discordSelectedModel} onStatusChange={setDiscordPluginStatus} onModelChange={setDiscordSelectedModel} />,
+    };
+
     const comingSoonChannels: ChannelConfig[] = [
       {
         id: 'slack',
@@ -305,24 +374,16 @@ const ChannelModalContent: React.FC = () => {
         disabled: true,
         content: <div className='text-14px text-t-secondary py-12px'>{t('channels.comingSoonDesc', 'Support for {{channel}} is coming soon', { channel: t('channels.slackTitle', 'Slack') })}</div>,
       },
-      {
-        id: 'discord',
-        title: t('channels.discordTitle', 'Discord'),
-        description: t('channels.discordDesc', 'Chat with Margay assistant via Discord'),
-        status: 'coming_soon',
-        enabled: false,
-        disabled: true,
-        content: <div className='text-14px text-t-secondary py-12px'>{t('channels.comingSoonDesc', 'Support for {{channel}} is coming soon', { channel: t('channels.discordTitle', 'Discord') })}</div>,
-      },
     ];
 
-    return [telegramChannel, larkChannel, ...comingSoonChannels];
-  }, [pluginStatus, larkPluginStatus, selectedModel, larkSelectedModel, modelList, enableLoading, larkEnableLoading, t]);
+    return [telegramChannel, larkChannel, discordChannel, ...comingSoonChannels];
+  }, [pluginStatus, larkPluginStatus, discordPluginStatus, selectedModel, larkSelectedModel, discordSelectedModel, modelList, enableLoading, larkEnableLoading, discordEnableLoading, t]);
 
   // Get toggle handler for each channel
   const getToggleHandler = (channelId: string) => {
     if (channelId === 'telegram') return handleTogglePlugin;
     if (channelId === 'lark') return handleToggleLarkPlugin;
+    if (channelId === 'discord') return handleToggleDiscordPlugin;
     return undefined;
   };
 

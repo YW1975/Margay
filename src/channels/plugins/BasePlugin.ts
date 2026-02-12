@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { IChannelPluginConfig, IUnifiedIncomingMessage, IUnifiedOutgoingMessage, PluginType, PluginStatus } from '../types';
+import type { IChannelPluginConfig, IUnifiedIncomingMessage, IUnifiedOutgoingMessage, PluginStatus } from '../types';
 
 /**
  * Plugin event handler type
@@ -40,7 +40,7 @@ export abstract class BasePlugin {
   /**
    * Plugin type identifier
    */
-  abstract readonly type: PluginType;
+  abstract readonly type: string;
 
   /**
    * Current plugin status
