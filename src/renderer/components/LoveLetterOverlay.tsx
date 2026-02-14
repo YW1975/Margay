@@ -104,8 +104,8 @@ const LoveLetterOverlay: React.FC = () => {
           <div className='love-letter-prompt__icon'>{'\uD83D\uDC8C'}</div>
           <p className='love-letter-prompt__text'>There&apos;s a love letter for you on my GitHub repo</p>
           <p className='love-letter-prompt__subtext'>
-            <a href='https://github.com/AuYuRa/Margay' target='_blank' rel='noopener noreferrer' className='love-letter-prompt__link' onClick={(e) => e.stopPropagation()}>
-              github.com/AuYuRa/Margay
+            <a href='https://github.com/YW1975/Margay' target='_blank' rel='noopener noreferrer' className='love-letter-prompt__link' onClick={(e) => e.stopPropagation()}>
+              github.com/YW1975/Margay
             </a>
           </p>
           <p className='love-letter-prompt__question'>{'\u60F3\u770B\u5417\uFF1F'} Want to see it?</p>
