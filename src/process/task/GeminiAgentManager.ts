@@ -309,13 +309,13 @@ export class GeminiAgentManager extends BaseAgentManager<
           );
         }
         break;
-      default: {
+      case 'mcp': {
         const mcpProps = confirmationDetails;
         question = t('messages.confirmation.allowMCPTool', {
           toolName: mcpProps.toolName,
           serverName: mcpProps.serverName,
         });
-        description = confirmationDetails.serverName + ':' + confirmationDetails.toolName;
+        description = mcpProps.serverName + ':' + mcpProps.toolName;
         options.push(
           {
             label: t('messages.confirmation.yesAllowOnce'),
@@ -338,7 +338,36 @@ export class GeminiAgentManager extends BaseAgentManager<
           },
           { label: t('messages.confirmation.no'), value: ToolConfirmationOutcome.Cancel }
         );
+        break;
       }
+      case 'ask_user': {
+        const askProps = confirmationDetails;
+        question = confirmationDetails.title || 'Ask User';
+        description = askProps.questions?.map((q) => q.question).join('\n') || '';
+        options.push(
+          {
+            label: t('messages.confirmation.yesAllowOnce'),
+            value: ToolConfirmationOutcome.ProceedOnce,
+          },
+          { label: t('messages.confirmation.no'), value: ToolConfirmationOutcome.Cancel }
+        );
+        break;
+      }
+      case 'exit_plan_mode': {
+        question = confirmationDetails.title || 'Exit Plan Mode';
+        description = confirmationDetails.planPath || '';
+        options.push(
+          {
+            label: t('messages.confirmation.yesAllowOnce'),
+            value: ToolConfirmationOutcome.ProceedOnce,
+          },
+          { label: t('messages.confirmation.no'), value: ToolConfirmationOutcome.Cancel }
+        );
+        break;
+      }
+      default:
+        // Unknown confirmation type — skip creating dialog
+        return {};
     }
     return {
       question,

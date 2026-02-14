@@ -87,7 +87,7 @@ const useConfirmationButtons = (confirmationDetails: IMessageToolGroupProps['mes
           );
         }
         break;
-      default: {
+      case 'mcp': {
         const mcpProps = confirmationDetails;
         question = t('messages.confirmation.allowMCPTool', {
           toolName: mcpProps.toolName,
@@ -113,7 +113,33 @@ const useConfirmationButtons = (confirmationDetails: IMessageToolGroupProps['mes
           },
           { label: t('messages.confirmation.no'), value: ToolConfirmationOutcome.Cancel }
         );
+        break;
       }
+      case 'ask_user': {
+        question = confirmationDetails.title || 'Ask User';
+        options.push(
+          {
+            label: t('messages.confirmation.yesAllowOnce'),
+            value: ToolConfirmationOutcome.ProceedOnce,
+          },
+          { label: t('messages.confirmation.no'), value: ToolConfirmationOutcome.Cancel }
+        );
+        break;
+      }
+      case 'exit_plan_mode': {
+        question = confirmationDetails.title || 'Exit Plan Mode';
+        options.push(
+          {
+            label: t('messages.confirmation.yesAllowOnce'),
+            value: ToolConfirmationOutcome.ProceedOnce,
+          },
+          { label: t('messages.confirmation.no'), value: ToolConfirmationOutcome.Cancel }
+        );
+        break;
+      }
+      default:
+        // Unknown confirmation type — skip
+        return {};
     }
     return {
       question,
@@ -151,6 +177,16 @@ const ConfirmationDetails: React.FC<{
         return <span className='text-t-primary'>{confirmationDetails.prompt}</span>;
       case 'mcp':
         return <span className='text-t-primary'>{confirmationDetails.toolDisplayName}</span>;
+      case 'ask_user':
+        return (
+          <div className='text-t-primary'>
+            {confirmationDetails.questions?.map((q, i) => (
+              <div key={i}>{q.question}</div>
+            ))}
+          </div>
+        );
+      case 'exit_plan_mode':
+        return <span className='text-t-primary'>{confirmationDetails.planPath}</span>;
     }
   }, [confirmationDetails, content]);
 
