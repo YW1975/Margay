@@ -34,7 +34,7 @@
     "test:contract": "jest tests/contract",
     "test:integration": "jest tests/integration",
     "prepare": "husky",
-    "preinstall": "bash scripts/bootstrap-vendor.sh",
+    "preinstall": "node scripts/bootstrap-vendor.js",
     "postinstall": "node scripts/postinstall.js"
   },
   "keywords": [],
