@@ -15,6 +15,10 @@ fi
 
 # Initialize submodule if not yet checked out
 if [ ! -f "vendor/gemini-cli/package.json" ]; then
+  # Clean up non-empty directory left by partial checkout (CI workaround)
+  if [ -d "vendor/gemini-cli" ] && [ ! -d "vendor/gemini-cli/.git" ]; then
+    rm -rf vendor/gemini-cli
+  fi
   git submodule update --init --recursive
 fi
 

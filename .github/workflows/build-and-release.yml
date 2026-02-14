@@ -2,6 +2,7 @@ name: Build and Release
 
 permissions:
   contents: write
+  actions: write
   issues: read
   pull-requests: read
 
