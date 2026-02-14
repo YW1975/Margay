@@ -7,8 +7,9 @@
 import { channel } from '@/common/ipcBridge';
 import { getDatabase } from '@/process/database';
 import { getChannelManager } from '@/channels/core/ChannelManager';
+import { getPluginDescriptors, hasValidCredentials as checkCredentials } from '@/channels/core/registry';
 import { getPairingService } from '@/channels/pairing/PairingService';
-import type { IChannelPluginStatus, IChannelUser, IChannelPairingRequest, IChannelSession } from '@/channels/types';
+import type { IChannelPluginStatus, IPluginDescriptorInfo } from '@/channels/types';
 import { rowToChannelUser, rowToChannelSession, rowToPairingRequest } from '@/channels/types';
 
 /**
@@ -17,6 +18,29 @@ import { rowToChannelUser, rowToChannelSession, rowToPairingRequest } from '@/ch
  */
 export function initChannelBridge(): void {
   console.log('[ChannelBridge] Initializing...');
+
+  // ==================== Plugin Descriptors ====================
+
+  /**
+   * Get all registered plugin descriptors (serializable metadata only)
+   */
+  channel.getPluginDescriptors.provider(async () => {
+    try {
+      const descriptors = getPluginDescriptors();
+      const infos: IPluginDescriptorInfo[] = descriptors.map((d) => ({
+        type: d.type,
+        displayName: d.displayName,
+        description: d.description,
+        connectionModes: d.connectionModes,
+        defaultConnectionMode: d.defaultConnectionMode,
+        credentialFields: d.credentialFields,
+      }));
+      return { success: true, data: infos };
+    } catch (error: any) {
+      console.error('[ChannelBridge] getPluginDescriptors error:', error);
+      return { success: false, msg: error.message };
+    }
+  });
 
   // ==================== Plugin Management ====================
 
@@ -33,13 +57,7 @@ export function initChannelBridge(): void {
       }
 
       const statuses: IChannelPluginStatus[] = result.data.map((plugin) => {
-        // Check credentials based on plugin type
-        let hasToken = false;
-        if (plugin.type === 'lark') {
-          hasToken = !!(plugin.credentials?.appId && plugin.credentials?.appSecret);
-        } else {
-          hasToken = !!plugin.credentials?.token;
-        }
+        const hasCredentials = checkCredentials(plugin.type, plugin.credentials);
 
         return {
           id: plugin.id,
@@ -50,7 +68,8 @@ export function initChannelBridge(): void {
           status: plugin.status,
           lastConnected: plugin.lastConnected,
           activeUsers: 0, // Will be populated from PluginManager when implemented
-          hasToken,
+          hasValidCredentials: hasCredentials,
+          hasToken: hasCredentials, // backward compat
         };
       });
 
@@ -100,12 +119,12 @@ export function initChannelBridge(): void {
   });
 
   /**
-   * Test plugin connection (validate token)
+   * Test plugin connection (validate credentials)
    */
-  channel.testPlugin.provider(async ({ pluginId, token, extraConfig }) => {
+  channel.testPlugin.provider(async ({ pluginId, credentials }) => {
     try {
       const manager = getChannelManager();
-      const result = await manager.testPlugin(pluginId, token, extraConfig);
+      const result = await manager.testPlugin(pluginId, credentials);
       return { success: true, data: result };
     } catch (error: any) {
       console.error('[ChannelBridge] testPlugin error:', error);

@@ -13,9 +13,9 @@ import { NavigationInterceptor } from '@/common/navigation';
 import type { TProviderWithModel } from '@/common/storage';
 import { uuid } from '@/common/utils';
 import { getProviderAuthType } from '@/common/utils/platformAuthType';
-import type { CompletedToolCall, Config, GeminiClient, ServerGeminiStreamEvent, ToolCall, ToolCallRequestInfo, Turn } from '@margay/agent-core';
+import type { CompletedToolCall, Config, GeminiClient, ServerGeminiStreamEvent, ToolCall, ToolCallRequestInfo, Turn } from './core-facade';
 import { AuthType, isGoogleNativeAuthType } from './auth-compat';
-import { CoreToolScheduler, FileDiscoveryService, sessionId, refreshServerHierarchicalMemory, clearOauthClientCache } from '@margay/agent-core';
+import { CoreToolScheduler, FileDiscoveryService, sessionId, refreshServerHierarchicalMemory, clearOauthClientCache } from './core-facade';
 import { ApiKeyManager } from '../../common/ApiKeyManager';
 import { handleAtCommand } from './cli/atCommandProcessor';
 import { loadCliConfig } from './cli/config';
@@ -744,6 +744,17 @@ export class GeminiAgent {
     const requestId = this.submitQuery(processedQuery, msg_id, abortController);
     return requestId;
   }
+  /**
+   * Hot-switch to a different model within the same provider.
+   * Uses config.setModel() which emits CoreEvent.ModelChanged → GeminiClient resets routing.
+   * Chat history is preserved, no agent rebuild needed.
+   */
+  switchModel(modelName: string): void {
+    if (!this.config) return;
+    this.model = { ...this.model!, useModel: modelName };
+    this.config.setModel(modelName, false); // non-temporary, triggers CoreEvent.ModelChanged
+  }
+
   stop(): void {
     this.abortController?.abort();
   }

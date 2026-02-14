@@ -281,6 +281,15 @@ const useGeminiMessage = (conversation_id: string, onError?: (message: IResponse
     });
   }, [conversation_id]);
 
+  // A6: Reset token usage when model changes (avoids showing stale data)
+  useAddEventListener(
+    'gemini.model.changed',
+    () => {
+      setTokenUsage(null);
+    },
+    []
+  );
+
   const resetState = useCallback(() => {
     setWaitingResponse(false);
     setStreamRunning(false);
@@ -396,7 +405,7 @@ const GeminiSendBox: React.FC<{
       }
 
       void handleSelectModel(fallbackTarget.provider, fallbackTarget.model).then(() => {
-        Message.success(t('conversation.chat.quotaSwitched', { defaultValue: `Switched to ${fallbackTarget.model}.`, model: fallbackTarget.model }));
+        Message.info(t('conversation.chat.quotaSwitchedResend', { defaultValue: `Switched to ${fallbackTarget.model}. Please resend your message.`, model: fallbackTarget.model }));
       });
     },
     [currentModel, handleSelectModel, isQuotaErrorMessage, resolveFallbackTarget, t]
@@ -602,7 +611,7 @@ const GeminiSendBox: React.FC<{
             }}
           />
         }
-        sendButtonPrefix={<ContextUsageIndicator tokenUsage={tokenUsage} contextLimit={getModelContextLimit(currentModel?.useModel)} size={24} />}
+        sendButtonPrefix={<ContextUsageIndicator tokenUsage={tokenUsage} contextLimit={getModelContextLimit(currentModel?.useModel, currentModel?.contextLimit)} size={24} />}
         prefix={
           <>
             {/* Files on top */}

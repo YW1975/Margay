@@ -16,6 +16,12 @@ import { useLatestRef } from '../hooks/useLatestRef';
 import { usePasteService } from '../hooks/usePasteService';
 import type { FileMetadata } from '../services/FileService';
 import { allSupportedExts } from '../services/FileService';
+import { emitter } from '../utils/emitter';
+
+// Valentine greeting intercept pattern / 情人节问候拦截模式
+const VALENTINE_GREETING_RE = /^(hello|hi|hey|nihao|ni\s*hao|你好|嗨|嘿|哈喽)$/i;
+// Valentine love letter intercept pattern / 情人节情书拦截模式
+const VALENTINE_LOVELETTER_RE = /^happy\s*valentine(?:'s|s)?(?:\s*day)?$/i;
 
 const constVoid = (): void => undefined;
 // 临界值：超过该字符数直接切换至多行模式，避免为超长文本做昂贵的宽度测量
@@ -205,6 +211,21 @@ const SendBox: React.FC<{
     if (!input.trim() && domSnippets.length === 0) {
       return;
     }
+
+    // Valentine greeting intercept — show hearts overlay instead of sending / 情人节问候拦截
+    if (VALENTINE_GREETING_RE.test(input.trim()) && domSnippets.length === 0) {
+      emitter.emit('valentine.greeting');
+      setInput('');
+      return;
+    }
+
+    // Valentine love letter intercept — show love letter overlay / 情人节情书拦截
+    if (VALENTINE_LOVELETTER_RE.test(input.trim()) && domSnippets.length === 0) {
+      emitter.emit('valentine.loveletter');
+      setInput('');
+      return;
+    }
+
     setIsLoading(true);
 
     // 构建消息内容：如果有 DOM 片段，附加完整 HTML / Build message: if has DOM snippets, append full HTML

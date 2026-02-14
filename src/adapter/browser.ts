@@ -4,7 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { bridge, logger } from '@office-ai/platform';
+import * as bridge from '@/common/platform-bridge';
+import { logger } from '@/common/logger';
 import type { ElectronBridgeAPI } from '@/types/electron';
 
 interface CustomWindow extends Window {

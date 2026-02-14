@@ -6,9 +6,9 @@
 
 import type { TProviderWithModel } from '@/common/storage';
 import { uuid } from '@/common/utils';
-import type { GeminiClient } from '@margay/agent-core';
+import type { GeminiClient } from '../../core-facade';
 import { AuthType } from '@/agent/gemini/auth-compat';
-import { Config } from '@margay/agent-core';
+import { Config } from '../../core-facade';
 import { ImageGenerationTool } from './img-gen';
 import { WebFetchTool } from './web-fetch';
 import { WebSearchTool } from './web-search';

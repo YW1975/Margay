@@ -5,8 +5,8 @@
  */
 
 import type { PartListUnion, PartUnion } from '@google/genai';
-import type { AnyToolInvocation, Config } from '@margay/agent-core';
-import { getErrorMessage, isNodeError, unescapePath } from '@margay/agent-core';
+import type { AnyToolInvocation, Config } from '../core-facade';
+import { getErrorMessage, isNodeError, unescapePath } from '../core-facade';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import type { HistoryItem, IndividualToolCallDisplay } from './types';

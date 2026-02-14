@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { AuthType, DEFAULT_GEMINI_FLASH_MODEL, DEFAULT_GEMINI_MODEL, isApiError, isStructuredError, UserTierId } from '@margay/agent-core';
+import { AuthType, DEFAULT_GEMINI_FLASH_MODEL, DEFAULT_GEMINI_MODEL, isApiError, isStructuredError, UserTierId } from '../core-facade';
 
 /**
  * 检查错误是否为 Pro 模型配额超限错误

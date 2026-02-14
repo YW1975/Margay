@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { UserTierId } from '@margay/agent-core';
+import type { UserTierId } from '@/agent/gemini/core-facade';
 import { getOauthInfoWithCache } from '@/agent/gemini/auth-compat';
 
 export interface GeminiSubscriptionStatus {

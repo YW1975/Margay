@@ -174,7 +174,7 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({ pluginStatus, m
     try {
       const result = await channel.testPlugin.invoke({
         pluginId: 'telegram_default',
-        token: telegramToken.trim(),
+        credentials: { token: telegramToken.trim() },
       });
 
       if (result.success && result.data?.success) {

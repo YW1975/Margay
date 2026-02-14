@@ -12,7 +12,7 @@
  * These are needed by Margay's multi-provider architecture.
  */
 
-import { AuthType as GoogleAuthType, UserAccountManager, getOauthClient, type Config } from '@margay/agent-core';
+import { AuthType as GoogleAuthType, UserAccountManager, getOauthClient, type Config } from './core-facade';
 export { GoogleAuthType };
 
 // Extend AuthType with multi-model auth types (from aioncli fork)

@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { CompletedToolCall, Config, GeminiClient, ServerGeminiStreamEvent, ToolCallRequestInfo } from '@margay/agent-core';
-import { executeToolCall, GeminiEventType as ServerGeminiEventType } from '@margay/agent-core';
+import type { CompletedToolCall, Config, GeminiClient, ServerGeminiStreamEvent, ToolCallRequestInfo } from './core-facade';
+import { executeToolCall, GeminiEventType as ServerGeminiEventType } from './core-facade';
 import { parseAndFormatApiError } from './cli/errorParsing';
 import { MIME_TO_EXT_MAP, DEFAULT_IMAGE_EXTENSION } from '@/common/constants';
 import * as fs from 'fs';

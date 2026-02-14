@@ -6,8 +6,8 @@
 
 import type { GroundingMetadata } from '@google/genai';
 import { Type } from '@google/genai';
-import type { ToolResult, ToolInvocation, ToolLocation, ToolCallConfirmationDetails, Config, MessageBus } from '@margay/agent-core';
-import { BaseDeclarativeTool, BaseToolInvocation, Kind, getErrorMessage, ToolErrorType, getResponseText } from '@margay/agent-core';
+import type { ToolResult, ToolInvocation, ToolLocation, ToolCallConfirmationDetails, Config, MessageBus } from '../../core-facade';
+import { BaseDeclarativeTool, BaseToolInvocation, Kind, getErrorMessage, ToolErrorType, getResponseText } from '../../core-facade';
 
 interface GroundingChunkWeb {
   uri?: string;

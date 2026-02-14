@@ -1,5 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
-import { AuthType } from '@margay/agent-core';
+import { AuthType } from '@/agent/gemini/core-facade';
 import type { RotatingApiClientOptions } from '../RotatingApiClient';
 import { RotatingApiClient } from '../RotatingApiClient';
 import { OpenAI2GeminiConverter, type OpenAIChatCompletionParams, type OpenAIChatCompletionResponse } from './OpenAI2GeminiConverter';

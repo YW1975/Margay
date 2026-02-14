@@ -8,7 +8,7 @@ import type { Context } from 'grammy';
 import { Bot, GrammyError, HttpError } from 'grammy';
 
 import type { UserFromGetMe } from 'grammy/types';
-import type { BotInfo, IChannelPluginConfig, IUnifiedOutgoingMessage, PluginType } from '../../types';
+import type { BotInfo, IChannelPluginConfig, IUnifiedOutgoingMessage } from '../../types';
 import { BasePlugin } from '../BasePlugin';
 import { splitMessage, TELEGRAM_MESSAGE_LIMIT, toTelegramSendParams, toUnifiedIncomingMessage } from './TelegramAdapter';
 import { extractAction, extractCategory } from './TelegramKeyboards';
@@ -20,7 +20,7 @@ import { extractAction, extractCategory } from './TelegramKeyboards';
  * Supports long-polling mode with automatic reconnection
  */
 export class TelegramPlugin extends BasePlugin {
-  readonly type: PluginType = 'telegram';
+  readonly type = 'telegram' as const;
 
   private bot: Bot | null = null;
   private botInfo: UserFromGetMe | null = null;

@@ -237,6 +237,29 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
     },
   },
   {
+    id: 'social-media-monitor',
+    avatar: '📡',
+    presetAgentType: 'gemini',
+    resourceDir: 'assistant/social-media-monitor',
+    ruleFiles: {
+      'en-US': 'social-media-monitor.md',
+      'zh-CN': 'social-media-monitor.zh-CN.md',
+    },
+    defaultEnabledSkills: ['social-monitor', 'cron'],
+    nameI18n: {
+      'en-US': 'Social Media Monitor',
+      'zh-CN': '社交媒体监控',
+    },
+    descriptionI18n: {
+      'en-US': 'Track engagement on your posts across X, HN, and Reddit. Auto-reply, generate digests, schedule monitoring.',
+      'zh-CN': '跟踪你在 X、HN、Reddit 上的帖子反馈，自动回帖、生成摘要、定时监控。',
+    },
+    promptsI18n: {
+      'en-US': ['Scan my recent X posts for replies', 'Check comments on my HN submission', 'Generate a weekly social media digest', 'Set up daily monitoring at 9 AM'],
+      'zh-CN': ['扫描我最近的推文回复', '查看我 HN 提交的评论', '生成本周社交媒体摘要', '设置每天早上 9 点自动监控'],
+    },
+  },
+  {
     id: 'beautiful-mermaid',
     avatar: '📈',
     presetAgentType: 'gemini',
@@ -257,6 +280,29 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
     promptsI18n: {
       'en-US': ['Draw a user login flowchart', 'Create an API sequence diagram', 'Draw a TCP state diagram'],
       'zh-CN': ['画一个用户登录流程图', '创建一个 API 时序图', '画一个 TCP 状态图'],
+    },
+  },
+  {
+    id: 'my-love',
+    avatar: '🐱',
+    presetAgentType: 'gemini',
+    resourceDir: 'assistant/my-love',
+    ruleFiles: {
+      'en-US': 'my-love.md',
+      'zh-CN': 'my-love.zh-CN.md',
+    },
+    defaultEnabledSkills: ['cron'],
+    nameI18n: {
+      'en-US': 'My Love',
+      'zh-CN': '喵爱',
+    },
+    descriptionI18n: {
+      'en-US': "A loving cat companion for Valentine's Day. Morning coffee reminders, afternoon call reminders, love letters, and endless affection.",
+      'zh-CN': '情人节专属猫咪伴侣。晨间咖啡提醒、午后电话提醒、情书生成和无尽的温柔。',
+    },
+    promptsI18n: {
+      'en-US': ['Set up morning and afternoon reminders', 'Write a love letter', 'Give me a fortune cookie', 'Compliment me'],
+      'zh-CN': ['设置早晚提醒', '写一封情书', '给我一个幸运饼干', '夸夸我'],
     },
   },
 ];

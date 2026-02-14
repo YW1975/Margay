@@ -18,37 +18,46 @@ import { useDirectorySelection } from './hooks/useDirectorySelection';
 import { useMultiAgentDetection } from './hooks/useMultiAgentDetection';
 import { processCustomCss } from './utils/customCssProcessor';
 import UpdateModal from '@/renderer/components/UpdateModal';
+import LoveLetterOverlay from '@/renderer/components/LoveLetterOverlay';
+import StarryNightOverlay from '@/renderer/components/StarryNightOverlay';
+import ValentineGreetingOverlay from '@/renderer/components/ValentineGreetingOverlay';
 import { isElectronDesktop } from '@/renderer/utils/platform';
 import MargayLogo from '@/renderer/assets/logos/margay.png';
 
 const useDebug = () => {
   const [count, setCount] = useState(0);
+  const [showEasterEgg, setShowEasterEgg] = useState(false);
   const timer = useRef<any>(null);
   const onClick = () => {
-    const open = () => {
+    const openDevTools = () => {
       ipcBridge.application.openDevTools.invoke().catch((error) => {
         console.error('Failed to open dev tools:', error);
       });
-      setCount(0);
     };
-    if (count >= 3) {
-      return open();
-    }
+
     setCount((prev) => {
-      if (prev >= 2) {
-        open();
+      const next = prev + 1;
+      if (next >= 5) {
+        // 5 clicks: Valentine Easter egg / 5次点击：情人节彩蛋
+        setShowEasterEgg(true);
         return 0;
       }
-      return prev + 1;
+      if (next >= 3) {
+        // 3 clicks: open DevTools (preserved behavior) / 3次点击：打开开发者工具
+        openDevTools();
+        return next; // Don't reset — let user keep clicking to reach 5
+      }
+      return next;
     });
+
     clearTimeout(timer.current);
     timer.current = setTimeout(() => {
       clearTimeout(timer.current);
       setCount(0);
-    }, 1000);
+    }, 1500); // Extended from 1s to 1.5s for 5-click feasibility
   };
 
-  return { onClick };
+  return { onClick, showEasterEgg, setShowEasterEgg };
 };
 
 const DEFAULT_SIDER_WIDTH = 250;
@@ -60,7 +69,7 @@ const Layout: React.FC<{
   const [collapsed, setCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [customCss, setCustomCss] = useState<string>('');
-  const { onClick } = useDebug();
+  const { onClick, showEasterEgg, setShowEasterEgg } = useDebug();
   const { contextHolder: multiAgentContextHolder } = useMultiAgentDetection();
   const { contextHolder: directorySelectionContextHolder } = useDirectorySelection();
   const location = useLocation();
@@ -249,6 +258,9 @@ const Layout: React.FC<{
             {directorySelectionContextHolder}
             <PwaPullToRefresh />
             <UpdateModal />
+            <ValentineGreetingOverlay />
+            <LoveLetterOverlay />
+            {showEasterEgg && <StarryNightOverlay onClose={() => setShowEasterEgg(false)} />}
           </ArcoLayout.Content>
         </ArcoLayout>
       </div>

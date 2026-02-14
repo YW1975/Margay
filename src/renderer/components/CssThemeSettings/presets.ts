@@ -8,7 +8,7 @@ import type { ICssTheme } from '@/common/storage';
 
 // 导入预设主题封面图片 base64 数据 / Import preset theme cover images as base64 data
 // 注意: webpack 存在 UTF-8 编码问题会损坏二进制文件，因此使用预生成的 base64 数据
-import { defaultThemeCover, misakaMikotoCover, helloKittyCover, retroWindowsCover } from './themeCovers';
+import { defaultThemeCover, misakaMikotoCover, helloKittyCover, retroWindowsCover, valentineCover } from './themeCovers';
 
 /**
  * 默认主题 ID / Default theme ID
@@ -3074,6 +3074,772 @@ input[type="radio"]:checked::after {
   * {
     box-shadow: none !important;
     text-shadow: none !important;
+  }
+}
+`,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  },
+  {
+    id: 'valentine-edition',
+    name: "Valentine's Day",
+    isPreset: true,
+    cover: valentineCover,
+    css: `
+/* ========================================
+   Valentine's Day Edition
+   Romantic rose-pink theme with floating hearts
+   Light & Dark mode support
+   ======================================== */
+
+/* ==================== Light Mode ==================== */
+:root {
+  /* ===== Primary Colors ===== */
+  --vt-primary: #e8485e;
+  --vt-primary-light: #f27a8e;
+  --vt-primary-lighter: #ffd6e0;
+  --vt-primary-lightest: #fff0f3;
+  --vt-primary-dark: #c9364d;
+  --vt-primary-darker: #a62a3f;
+  --vt-primary-rgb: 232, 72, 94;
+
+  /* ===== Brand Palette ===== */
+  --vt-shade-1: #fff0f3;
+  --vt-shade-2: #ffd6e0;
+  --vt-shade-3: #ffb7c5;
+  --vt-shade-4: #f27a8e;
+  --vt-shade-5: #e8485e;
+  --vt-shade-6: #c9364d;
+  --vt-shade-7: #a62a3f;
+  --vt-shade-8: #832030;
+  --vt-shade-9: #5e1622;
+  --vt-shade-10: #3a0c14;
+
+  /* ===== System Variable Mapping ===== */
+  --color-primary: var(--vt-primary);
+  --primary: var(--vt-primary);
+  --color-primary-light-1: var(--vt-primary-light);
+  --color-primary-light-2: #f5a3b4;
+  --color-primary-light-3: var(--vt-primary-lighter);
+  --color-primary-dark-1: var(--vt-primary-dark);
+  --primary-rgb: var(--vt-primary-rgb);
+
+  --brand: var(--vt-primary);
+  --brand-light: var(--vt-shade-1);
+  --brand-hover: var(--vt-primary-light);
+  --color-brand-fill: var(--vt-primary);
+  --color-brand-bg: var(--vt-shade-1);
+
+  --aou-1: var(--vt-shade-1);
+  --aou-2: var(--vt-shade-2);
+  --aou-3: var(--vt-shade-3);
+  --aou-4: var(--vt-shade-4);
+  --aou-5: var(--vt-shade-5);
+  --aou-6: var(--vt-shade-6);
+  --aou-7: var(--vt-shade-7);
+  --aou-8: var(--vt-shade-8);
+  --aou-9: var(--vt-shade-9);
+  --aou-10: var(--vt-shade-10);
+
+  /* ===== Background Colors ===== */
+  --bg-base: #ffffff;
+  --bg-1: #fff7f8;
+  --bg-2: #ffffff;
+  --bg-3: #fce4e8;
+  --bg-4: #f5c6cf;
+  --bg-5: #e8a0ad;
+  --bg-6: #c98a96;
+  --bg-8: #a05f6e;
+  --bg-9: #5e1622;
+  --bg-10: #3a0c14;
+  --color-bg-1: #fff7f8;
+  --color-bg-2: #ffffff;
+  --color-bg-3: #fce4e8;
+  --color-bg-4: #f5c6cf;
+  --bg-hover: #fff0f3;
+  --bg-active: #ffd6e0;
+  --fill: #fff7f8;
+  --color-fill: #fff7f8;
+  --fill-0: #ffffff;
+  --fill-white-to-black: #ffffff;
+  --color-fill-2: #fce4e8;
+  --color-fill-3: #f5c6cf;
+
+  /* ===== Text Colors ===== */
+  --text-0: #000000;
+  --text-primary: #3a1520;
+  --text-secondary: #7a4a58;
+  --text-disabled: #c9a0ab;
+  --text-white: #ffffff;
+  --color-text-1: #3a1520;
+  --color-text-2: #7a4a58;
+  --color-text-3: #c9a0ab;
+  --color-text-4: #e5d0d6;
+
+  /* ===== Border Colors ===== */
+  --border-base: #f5c6cf;
+  --border-light: #fce4e8;
+  --border-special: #f5c6cf;
+  --color-border: #f5c6cf;
+  --color-border-1: #f5c6cf;
+  --color-border-2: #fce4e8;
+  --color-border-3: #ffd6e0;
+  --color-border-4: #fff0f3;
+
+  /* ===== Semantic Colors ===== */
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --info: var(--vt-primary-light);
+
+  /* ===== Message Colors ===== */
+  --message-user-bg: #ffd6e0;
+  --message-tips-bg: #fff7f8;
+  --workspace-btn-bg: #fce4e8;
+
+  /* ===== Dialog Colors ===== */
+  --dialog-fill-0: rgba(255, 255, 255, 0.92);
+
+  /* ===== Animation & Gradient ===== */
+  --transition-duration: 0.3s;
+  --transition-timing: ease;
+  --gradient-primary: linear-gradient(135deg, #e8485e 0%, #f27a8e 50%, #c9364d 100%);
+  --gradient-primary-hover: linear-gradient(135deg, #f27a8e 0%, #e8485e 100%);
+}
+
+/* ===== Global ===== */
+body {
+  font-family: "Georgia", "Palatino Linotype", "Noto Serif SC", serif;
+  background-color: var(--bg-1);
+}
+
+html {
+  background-color: var(--bg-1);
+}
+
+/* ===== Layout ===== */
+.arco-layout,
+[class*="layout"] {
+  background-color: var(--bg-1);
+}
+
+.arco-layout-content {
+  background-color: var(--bg-1);
+}
+
+/* ===== Sidebar ===== */
+.layout-sider {
+  background-color: #fce4e8;
+  border-right: 2px solid var(--border-base);
+  position: relative;
+  z-index: 100;
+}
+
+.layout-sider-header {
+  background: var(--gradient-primary);
+  color: white;
+  box-shadow: 0 2px 8px rgba(232, 72, 94, 0.3);
+}
+
+
+.layout-sider svg,
+.layout-sider-header svg {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.9);
+  color: rgba(255, 255, 255, 0.9);
+  transition: stroke var(--transition-duration) var(--transition-timing);
+}
+
+.layout-sider-header svg:hover {
+  fill: none;
+  stroke: white;
+  color: white;
+}
+
+/* ===== Icon Colors ===== */
+.theme-icon svg,
+svg:not([class*="model"] svg):not([class*="Model"] svg) {
+  fill: none;
+  stroke: var(--vt-primary);
+  color: var(--vt-primary);
+  transition: stroke var(--transition-duration) var(--transition-timing),
+              color var(--transition-duration) var(--transition-timing);
+}
+
+.theme-icon svg:hover,
+svg:not([class*="model"] svg):not([class*="Model"] svg):hover {
+  fill: none;
+  stroke: var(--vt-primary-light);
+  color: var(--vt-primary-light);
+}
+
+button:not([class*="model"]) svg,
+.arco-btn:not([class*="model"]) svg {
+  fill: none;
+  stroke: var(--vt-primary);
+  color: var(--vt-primary);
+  transition: stroke var(--transition-duration) var(--transition-timing);
+}
+
+button:not([class*="model"]) svg:hover,
+.arco-btn:not([class*="model"]) svg:hover {
+  fill: none;
+  stroke: var(--vt-primary-light);
+  color: var(--vt-primary-light);
+}
+
+.arco-btn-primary svg {
+  stroke: white;
+  color: white;
+}
+
+/* ===== Floating Hearts Animation ===== */
+@keyframes vt-float-heart {
+  0% { transform: translateY(100vh) rotate(0deg) scale(0); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 0.8; }
+  100% { transform: translateY(-20vh) rotate(720deg) scale(1); opacity: 0; }
+}
+
+@keyframes vt-heartbeat {
+  0%, 100% { transform: scale(1); }
+  14% { transform: scale(1.3); }
+  28% { transform: scale(1); }
+  42% { transform: scale(1.3); }
+  56% { transform: scale(1); }
+}
+
+/* Hearts container - overlay on main content */
+.layout-content.bg-1 {
+  background-color: var(--bg-1);
+  position: relative;
+  overflow: hidden;
+}
+
+.layout-content.bg-1::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 247, 248, 0.8) 0%,
+    rgba(252, 228, 232, 0.6) 50%,
+    rgba(255, 247, 248, 0.8) 100%
+  );
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Floating hearts decorations via box-shadows */
+.layout-content.bg-1::after {
+  content: "\\2764  \\2764  \\2764  \\2764  \\2764";
+  position: absolute;
+  bottom: -50px;
+  left: 0;
+  right: 0;
+  font-size: 24px;
+  letter-spacing: 60px;
+  text-align: center;
+  color: rgba(232, 72, 94, 0.15);
+  animation: vt-float-heart 12s linear infinite;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.layout-content.bg-1 > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ===== Input & Send Box ===== */
+.guidLayout,
+[class*="guid"] {
+  position: relative;
+  z-index: 10;
+}
+
+.guidInputCard {
+  background-color: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(10px);
+  border: 2px solid var(--vt-primary-lighter);
+  border-radius: 20px;
+  box-shadow: 0 4px 24px rgba(232, 72, 94, 0.12);
+}
+
+.guidInputCard textarea,
+[class*="guidInputCard"] textarea {
+  background-color: rgba(255, 255, 255, 0.98);
+  color: var(--color-text-1);
+}
+
+.sendbox-container:not([class*="model"]):not([class*="Model"]),
+[class*="sendbox"]:not([class*="input"]):not([class*="textarea"]):not([class*="model"]):not([class*="Model"]):not([class*="tools"]) {
+  border-radius: 20px;
+  border: 2px solid var(--vt-primary-lighter);
+  background-color: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 24px rgba(232, 72, 94, 0.12);
+  transition: all var(--transition-duration) var(--transition-timing);
+}
+
+.sendbox-container textarea,
+[class*="sendbox"] textarea {
+  border: none;
+  background: transparent;
+}
+
+.sendbox-container:focus-within,
+[class*="sendbox"]:focus-within {
+  border-color: var(--vt-primary-light);
+  box-shadow: 0 6px 28px rgba(232, 72, 94, 0.25);
+}
+
+.sendbox-container svg:not([class*="model"] svg),
+[class*="sendbox"]:not([class*="model"]) svg {
+  fill: none;
+  stroke: var(--vt-primary);
+  color: var(--vt-primary);
+  transition: stroke var(--transition-duration) var(--transition-timing);
+}
+
+.sendbox-container svg:not([class*="model"] svg):hover,
+[class*="sendbox"]:not([class*="model"]) svg:hover {
+  fill: none;
+  stroke: var(--vt-primary-light);
+  color: var(--vt-primary-light);
+  transform: scale(1.1);
+}
+
+/* ===== Message Bubbles ===== */
+.message-item.user .message-bubble,
+[class*="message"][class*="user"] .message-content {
+  background: var(--gradient-primary);
+  color: white;
+  border-radius: 20px 20px 4px 20px;
+  border: none;
+  box-shadow: 0 4px 16px rgba(232, 72, 94, 0.3);
+  padding: 12px 18px;
+}
+
+.message-item.ai .message-bubble,
+[class*="message"][class*="ai"] .message-content,
+[class*="message"][class*="assistant"] .message-content {
+  background-color: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border: 2px solid var(--vt-primary-lighter);
+  border-radius: 20px 20px 20px 4px;
+  box-shadow: 0 4px 16px rgba(232, 72, 94, 0.1);
+  padding: 12px 18px;
+}
+
+/* ===== Primary Buttons ===== */
+.arco-btn-primary:not([class*="icon"]):not([class*="circle"]):not([class*="model"]):not([class*="Model"]),
+button[type="primary"]:not([class*="icon"]):not([class*="circle"]):not([class*="model"]):not([class*="Model"]) {
+  background: var(--gradient-primary);
+  border: none;
+  color: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(232, 72, 94, 0.3);
+  transition: all var(--transition-duration) var(--transition-timing);
+}
+
+.arco-btn-primary:hover:not([class*="icon"]):not([class*="circle"]):not([class*="model"]):not([class*="Model"]),
+button[type="primary"]:hover:not([class*="icon"]):not([class*="circle"]):not([class*="model"]):not([class*="Model"]) {
+  background: var(--gradient-primary-hover);
+  box-shadow: 0 6px 20px rgba(232, 72, 94, 0.4);
+  transform: translateY(-1px);
+}
+
+.arco-btn-primary svg {
+  stroke: white;
+  color: white;
+}
+
+/* ===== Tabs ===== */
+.arco-tabs-header-nav-line .arco-tabs-header-ink-bar {
+  background: var(--gradient-primary);
+}
+
+/* ===== Scrollbar ===== */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--vt-primary-light) 0%, var(--vt-primary) 100%);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, var(--vt-primary) 0%, var(--vt-primary-dark) 100%);
+}
+
+::-webkit-scrollbar-track {
+  background: var(--vt-shade-1);
+  border-radius: 10px;
+}
+
+/* ===== Selection ===== */
+::selection {
+  background-color: var(--vt-primary-lighter);
+  color: var(--vt-primary-darker);
+}
+
+/* ===== Links ===== */
+a:not([class*="button"]):not([class*="btn"]) {
+  color: var(--vt-primary);
+}
+
+a:hover:not([class*="button"]):not([class*="btn"]) {
+  color: var(--vt-primary-light);
+}
+
+/* ===== Tooltips ===== */
+.arco-tooltip-popup,
+.arco-popover-popup {
+  z-index: 10000 !important;
+}
+
+.arco-tooltip-inner,
+.arco-popover-inner {
+  background: rgba(255, 255, 255, 0.96) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-base) !important;
+  box-shadow: 0 4px 16px rgba(232, 72, 94, 0.15) !important;
+  border-radius: 10px !important;
+}
+
+/* ===== Modals ===== */
+.arco-modal-body {
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid var(--border-base);
+  color: var(--text-primary);
+  border-radius: 16px;
+}
+
+.arco-modal-header {
+  background: var(--gradient-primary);
+  color: white;
+  border-radius: 16px 16px 0 0;
+}
+
+.arco-modal-footer {
+  background: var(--bg-1);
+  border-top: 1px solid var(--border-base);
+}
+
+/* ===== Login Page Override ===== */
+.login-page {
+  background: linear-gradient(135deg, #ffd6e0 0%, #e8485e 50%, #c9364d 100%) !important;
+}
+
+.login-page__title {
+  background: linear-gradient(135deg, #e8485e 0%, #c9364d 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
+}
+
+.login-page__submit {
+  background: linear-gradient(135deg, #e8485e 0%, #c9364d 100%) !important;
+}
+
+.login-page__submit:hover:not(:disabled) {
+  box-shadow: 0 8px 28px rgba(232, 72, 94, 0.5) !important;
+}
+
+.login-page__input:hover,
+.login-page__input:focus {
+  border-color: #e8485e !important;
+}
+
+.login-page__input:focus {
+  box-shadow: 0 0 0 3px rgba(232, 72, 94, 0.15) !important;
+}
+
+.login-page__lang-select:hover,
+.login-page__lang-select:focus {
+  border-color: #e8485e !important;
+  box-shadow: 0 0 0 3px rgba(232, 72, 94, 0.15) !important;
+}
+
+.login-page__toggle-password:hover {
+  color: #e8485e !important;
+}
+
+.login-page__checkbox input[type='checkbox'] {
+  accent-color: #e8485e !important;
+}
+
+/* ==================== Dark Mode ==================== */
+[data-theme='dark'] {
+  /* ===== Dark Mode Primary ===== */
+  --vt-primary: #f27a8e;
+  --vt-primary-light: #f5a3b4;
+  --vt-primary-lighter: #4d2530;
+  --vt-primary-lightest: #3a1a23;
+  --vt-primary-dark: #e8485e;
+  --vt-primary-darker: #c9364d;
+  --vt-primary-rgb: 242, 122, 142;
+
+  --color-primary: var(--vt-primary);
+  --primary: var(--vt-primary);
+  --color-primary-light-1: #f5a3b4;
+  --color-primary-light-2: #f8c7d1;
+  --color-primary-light-3: #fbe3e8;
+  --color-primary-dark-1: #e8485e;
+  --primary-rgb: var(--vt-primary-rgb);
+
+  --brand: var(--vt-primary);
+  --brand-light: #3d1f28;
+  --brand-hover: #e8485e;
+  --color-brand-fill: var(--vt-primary);
+  --color-brand-bg: #3d1f28;
+
+  --aou-1: #2a1118;
+  --aou-2: #3d1f28;
+  --aou-3: #5e2d3a;
+  --aou-4: #833e50;
+  --aou-5: #a65068;
+  --aou-6: #c96a80;
+  --aou-7: #e8889c;
+  --aou-8: #f5a3b4;
+  --aou-9: #fbd0d8;
+  --aou-10: #fff0f3;
+
+  /* ===== Dark Mode Backgrounds ===== */
+  --bg-base: #140a0d;
+  --bg-1: #1c0e13;
+  --bg-2: #2a1118;
+  --bg-3: #3d1f28;
+  --bg-4: #5e2d3a;
+  --bg-5: #733848;
+  --bg-6: #8a4a5c;
+  --bg-8: #b06a7e;
+  --bg-9: #d6949e;
+  --bg-10: #f5d0d8;
+  --color-bg-1: #1c0e13;
+  --color-bg-2: #2a1118;
+  --color-bg-3: #3d1f28;
+  --color-bg-4: #5e2d3a;
+  --bg-hover: #221017;
+  --bg-active: #33151e;
+  --fill: #1c0e13;
+  --color-fill: #1c0e13;
+  --fill-0: rgba(255, 255, 255, 0.06);
+  --fill-white-to-black: #000000;
+  --color-fill-2: #2a1118;
+  --color-fill-3: #3d1f28;
+
+  /* ===== Dark Mode Text ===== */
+  --text-0: #ffffff;
+  --text-primary: #f0d0d8;
+  --text-secondary: #b08a94;
+  --text-disabled: #6a4a54;
+  --text-white: #ffffff;
+  --color-text-1: #f0d0d8;
+  --color-text-2: #b08a94;
+  --color-text-3: #6a4a54;
+  --color-text-4: #4a2a34;
+
+  /* ===== Dark Mode Borders ===== */
+  --border-base: #3d1f28;
+  --border-light: #2a1118;
+  --border-special: #5e2d3a;
+  --color-border: #3d1f28;
+  --color-border-1: #3d1f28;
+  --color-border-2: #2a1118;
+  --color-border-3: #1c0e13;
+  --color-border-4: #140a0d;
+
+  /* ===== Dark Mode Semantic ===== */
+  --success: #34d399;
+  --warning: #fbbf24;
+  --danger: #f87171;
+  --info: var(--vt-primary);
+
+  /* ===== Dark Mode Messages ===== */
+  --message-user-bg: #3d1f28;
+  --message-tips-bg: #1c0e13;
+  --workspace-btn-bg: #221017;
+
+  --dialog-fill-0: rgba(42, 17, 24, 0.95);
+  --inverse: #ffffff;
+
+  --gradient-primary: linear-gradient(135deg, #c9364d 0%, #e8485e 50%, #a62a3f 100%);
+  --gradient-primary-hover: linear-gradient(135deg, #e8485e 0%, #c9364d 100%);
+}
+
+/* ===== Dark Mode Overrides ===== */
+[data-theme='dark'] .layout-sider {
+  background-color: #2a1118;
+  border-right: 2px solid #3d1f28;
+}
+
+[data-theme='dark'] .layout-sider-header {
+  background: linear-gradient(135deg, #a62a3f 0%, #c9364d 100%);
+  box-shadow: 0 2px 8px rgba(166, 42, 63, 0.4);
+}
+
+[data-theme='dark'] .layout-content.bg-1 {
+  background-color: var(--bg-1);
+}
+
+[data-theme='dark'] .layout-content.bg-1::before {
+  background: linear-gradient(
+    135deg,
+    rgba(28, 14, 19, 0.85) 0%,
+    rgba(42, 17, 24, 0.7) 50%,
+    rgba(28, 14, 19, 0.85) 100%
+  );
+}
+
+[data-theme='dark'] .layout-content.bg-1::after {
+  color: rgba(242, 122, 142, 0.1);
+}
+
+[data-theme='dark'] .guidInputCard {
+  background-color: rgba(42, 17, 24, 0.88);
+  border-color: #3d1f28;
+}
+
+[data-theme='dark'] .sendbox-container:not([class*="model"]):not([class*="Model"]),
+[data-theme='dark'] [class*="sendbox"]:not([class*="input"]):not([class*="textarea"]):not([class*="model"]):not([class*="Model"]):not([class*="tools"]) {
+  background-color: rgba(42, 17, 24, 0.88);
+  border-color: #3d1f28;
+}
+
+[data-theme='dark'] .message-item.user .message-bubble,
+[data-theme='dark'] [class*="message"][class*="user"] .message-content {
+  background: linear-gradient(135deg, #a62a3f 0%, #c9364d 100%);
+  color: white;
+  border: none;
+  box-shadow: 0 4px 16px rgba(166, 42, 63, 0.4);
+}
+
+[data-theme='dark'] .message-item.ai .message-bubble,
+[data-theme='dark'] .message-item.assistant .message-bubble,
+[data-theme='dark'] [class*="message"][class*="ai"] .message-content,
+[data-theme='dark'] [class*="message"][class*="assistant"] .message-content {
+  background-color: rgba(42, 17, 24, 0.95);
+  border: 2px solid #3d1f28;
+  box-shadow: 0 4px 16px rgba(20, 10, 13, 0.3);
+  color: var(--text-primary);
+}
+
+[data-theme='dark'] .arco-btn-primary:not([class*="icon"]):not([class*="circle"]):not([class*="model"]):not([class*="Model"]),
+[data-theme='dark'] button[type="primary"]:not([class*="icon"]):not([class*="circle"]):not([class*="model"]):not([class*="Model"]) {
+  background: linear-gradient(135deg, #c9364d 0%, #a62a3f 100%);
+  border: none;
+  box-shadow: 0 4px 12px rgba(166, 42, 63, 0.4);
+}
+
+[data-theme='dark'] .arco-btn-primary:hover:not([class*="icon"]):not([class*="circle"]):not([class*="model"]):not([class*="Model"]),
+[data-theme='dark'] button[type="primary"]:hover:not([class*="icon"]):not([class*="circle"]):not([class*="model"]):not([class*="Model"]) {
+  background: linear-gradient(135deg, #e8485e 0%, #c9364d 100%);
+  box-shadow: 0 6px 20px rgba(232, 72, 94, 0.5);
+}
+
+[data-theme='dark'] ::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #5e2d3a 0%, #3d1f28 100%);
+}
+
+[data-theme='dark'] ::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #833e50 0%, #5e2d3a 100%);
+}
+
+[data-theme='dark'] ::-webkit-scrollbar-track {
+  background: var(--bg-1);
+}
+
+[data-theme='dark'] ::selection {
+  background-color: rgba(232, 72, 94, 0.3);
+  color: #f5a3b4;
+}
+
+[data-theme='dark'] a:not([class*="button"]):not([class*="btn"]) {
+  color: var(--vt-primary);
+}
+
+[data-theme='dark'] a:hover:not([class*="button"]):not([class*="btn"]) {
+  color: var(--vt-primary-light);
+}
+
+[data-theme='dark'] .arco-tooltip-inner,
+[data-theme='dark'] .arco-popover-inner {
+  background: rgba(42, 17, 24, 0.96) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-base) !important;
+  box-shadow: 0 4px 16px rgba(20, 10, 13, 0.4) !important;
+}
+
+[data-theme='dark'] .arco-modal-body {
+  background: var(--bg-2);
+  border: 1px solid var(--border-base);
+  color: var(--text-primary);
+}
+
+[data-theme='dark'] .arco-modal-header {
+  background: linear-gradient(135deg, #a62a3f 0%, #c9364d 100%);
+  color: white;
+}
+
+[data-theme='dark'] .arco-modal-footer {
+  background: var(--bg-2);
+  border-top: 1px solid var(--border-base);
+}
+
+[data-theme='dark'] .arco-input,
+[data-theme='dark'] input[type="text"],
+[data-theme='dark'] input[type="password"],
+[data-theme='dark'] input[type="email"],
+[data-theme='dark'] input[type="number"],
+[data-theme='dark'] input[type="search"] {
+  background-color: var(--bg-2);
+  border: 1px solid var(--border-base);
+  color: var(--text-primary);
+}
+
+[data-theme='dark'] .arco-input:focus,
+[data-theme='dark'] input:focus {
+  border-color: var(--vt-primary);
+  box-shadow: 0 0 0 2px rgba(242, 122, 142, 0.2);
+}
+
+/* ===== Dark Mode Login ===== */
+[data-theme='dark'] .login-page {
+  background: linear-gradient(135deg, #3a0c14 0%, #5e1622 50%, #2a0a10 100%) !important;
+}
+
+/* ==================== Responsive ==================== */
+@media (max-width: 768px) {
+  .guidInputCard,
+  .sendbox-container {
+    border-radius: 12px;
+  }
+
+  .message-item.user .message-bubble,
+  .message-item.ai .message-bubble,
+  .message-item.assistant .message-bubble {
+    border-radius: 12px;
+    padding: 10px 14px;
+  }
+}
+
+/* ==================== Print ==================== */
+@media print {
+  .layout-content.bg-1::before,
+  .layout-content.bg-1::after,
+  [class*="chat-layout"] .arco-layout-content::before {
+    display: none;
+  }
+
+  * {
+    box-shadow: none !important;
   }
 }
 `,

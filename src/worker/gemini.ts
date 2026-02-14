@@ -61,6 +61,10 @@ export default forkTask(({ data }, pipe) => {
   pipe.on('send.message', (event: { input: string; msg_id: string; files?: string[] }, deferred) => {
     deferred.with(agent.send(event.input, event.msg_id, event.files));
   });
+  pipe.on('switch.model', (event: { modelName: string }, deferred) => {
+    agent.switchModel(event.modelName);
+    deferred.with(Promise.resolve());
+  });
 
   // Safety net: kill background process groups when worker is terminated
   process.on('exit', () => {

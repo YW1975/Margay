@@ -5,7 +5,7 @@
  */
 
 import type { AcpBackend, AcpBackendConfig } from '@/types/acpTypes';
-import { storage } from '@office-ai/platform';
+import * as storage from '@/common/platform-storage';
 
 /**
  * @description 聊天相关的存储
@@ -95,7 +95,10 @@ export interface IEnvStorageRefer {
  * Conversation source type - identifies where the conversation was created
  * 会话来源类型 - 标识会话创建的来源
  */
-export type ConversationSource = 'margay' | 'telegram';
+/**
+ * Open string type — well-known values: 'margay', 'telegram', 'lark', 'discord'
+ */
+export type ConversationSource = string;
 
 interface IChatConversation<T, Extra> {
   createTime: number;

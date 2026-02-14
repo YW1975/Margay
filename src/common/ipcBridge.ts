@@ -5,7 +5,7 @@
  */
 
 import type { IConfirmation } from '@/common/chatLib';
-import { bridge } from '@office-ai/platform';
+import * as bridge from '@/common/platform-bridge';
 import type { OpenDialogOptions } from 'electron';
 import type { McpSource } from '../process/services/mcpServices/McpProtocol';
 import type { AcpBackend, PresetAgentType } from '../types/acpTypes';
@@ -442,14 +442,17 @@ interface IBridgeResponse<D = {}> {
 
 // ==================== Channel API ====================
 
-import type { IChannelPairingRequest, IChannelPluginStatus, IChannelSession, IChannelUser } from '@/channels/types';
+import type { IChannelPairingRequest, IChannelPluginStatus, IChannelSession, IChannelUser, IPluginDescriptorInfo } from '@/channels/types';
 
 export const channel = {
+  // Plugin Descriptors (static metadata)
+  getPluginDescriptors: bridge.buildProvider<IBridgeResponse<IPluginDescriptorInfo[]>, void>('channel.get-plugin-descriptors'),
+
   // Plugin Management
   getPluginStatus: bridge.buildProvider<IBridgeResponse<IChannelPluginStatus[]>, void>('channel.get-plugin-status'),
   enablePlugin: bridge.buildProvider<IBridgeResponse, { pluginId: string; config: Record<string, unknown> }>('channel.enable-plugin'),
   disablePlugin: bridge.buildProvider<IBridgeResponse, { pluginId: string }>('channel.disable-plugin'),
-  testPlugin: bridge.buildProvider<IBridgeResponse<{ success: boolean; botUsername?: string; error?: string }>, { pluginId: string; token: string; extraConfig?: { appId?: string; appSecret?: string } }>('channel.test-plugin'),
+  testPlugin: bridge.buildProvider<IBridgeResponse<{ success: boolean; botUsername?: string; error?: string }>, { pluginId: string; credentials: Record<string, string> }>('channel.test-plugin'),
 
   // Pairing Management
   getPendingPairings: bridge.buildProvider<IBridgeResponse<IChannelPairingRequest[]>, void>('channel.get-pending-pairings'),

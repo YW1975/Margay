@@ -16,7 +16,7 @@ import remarkMath from 'remark-math';
 import { ipcBridge } from '@/common';
 import { Message } from '@arco-design/web-react';
 import { Copy, Down, Up } from '@icon-park/react';
-import { theme } from '@office-ai/platform';
+import { theme } from '@/common/theme-tokens';
 import classNames from 'classnames';
 import React, { useMemo, useState } from 'react';
 import ReactDOM from 'react-dom';

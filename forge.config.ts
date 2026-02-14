@@ -231,6 +231,9 @@ module.exports = {
             errors: true, // 显示错误
             warnings: false, // 不显示警告
           },
+          // 限制 HMR WebSocket 重连次数，减少 dev server 未就绪时的 console 刷屏
+          // Limit HMR WebSocket reconnect attempts to reduce console noise during startup
+          reconnect: 5,
         },
       },
     }),

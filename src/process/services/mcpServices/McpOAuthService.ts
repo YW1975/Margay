@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { MCPOAuthProvider, OAUTH_DISPLAY_MESSAGE_EVENT, MCPOAuthTokenStorage } from '@margay/agent-core';
-import type { MCPOAuthConfig } from '@margay/agent-core';
+import { MCPOAuthProvider, OAUTH_DISPLAY_MESSAGE_EVENT, MCPOAuthTokenStorage } from '@/agent/gemini/core-facade';
+import type { MCPOAuthConfig } from '@/agent/gemini/core-facade';
 import { EventEmitter } from 'node:events';
 import type { IMcpServer } from '../../../common/storage';
 
@@ -143,7 +143,7 @@ export class McpOAuthService {
       }
 
       // 执行 OAuth 认证流程
-      await this.oauthProvider.authenticate(server.name, config, url, this.eventEmitter);
+      await this.oauthProvider.authenticate(server.name, config, url);
 
       console.log(`[McpOAuthService] OAuth login successful for ${server.name}`);
       return { success: true };

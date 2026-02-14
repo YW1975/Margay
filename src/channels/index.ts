@@ -17,10 +17,11 @@ export * from './types';
 // Core exports
 export { ChannelManager, getChannelManager } from './core/ChannelManager';
 export { SessionManager } from './core/SessionManager';
+export { getPluginDescriptors, getDescriptor, hasValidCredentials, initPluginRegistry, registerDescriptor } from './core/registry';
 
 // Gateway exports
 export { ActionExecutor } from './gateway/ActionExecutor';
-export { PluginManager, registerPlugin } from './gateway/PluginManager';
+export { PluginManager } from './gateway/PluginManager';
 
 // Plugin exports
 export { BasePlugin } from './plugins/BasePlugin';

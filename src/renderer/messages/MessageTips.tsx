@@ -6,7 +6,7 @@
 
 import type { IMessageTips } from '@/common/chatLib';
 import { Attention, CheckOne } from '@icon-park/react';
-import { theme } from '@office-ai/platform';
+import { theme } from '@/common/theme-tokens';
 import classNames from 'classnames';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';

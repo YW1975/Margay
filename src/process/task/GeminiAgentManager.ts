@@ -564,26 +564,39 @@ export class GeminiAgentManager extends BaseAgentManager<
    * SIGTERM→SIGKILL cleanup (200ms), then terminates the worker process.
    */
   kill() {
+    let killed = false;
     const GRACE_PERIOD_MS = 300; // Allow ShellExecutionService SIGTERM→SIGKILL (200ms) + margin
     const HARD_TIMEOUT_MS = 1000; // Force kill if worker unresponsive
 
-    // Hard fallback: force kill after timeout regardless
-    const hardTimer = setTimeout(() => {
+    const doKill = () => {
+      if (killed) return;
+      killed = true;
+      clearTimeout(hardTimer);
       super.kill();
-    }, HARD_TIMEOUT_MS);
+    };
+
+    // Hard fallback: force kill after timeout regardless
+    const hardTimer = setTimeout(doKill, HARD_TIMEOUT_MS);
 
     // Graceful path: stop → grace period → kill
     // stop() triggers abort signal in worker, which kills tracked process groups
     // Grace period allows SIGTERM→SIGKILL cycle to complete
     void this.stop()
-      .catch(() => {
-        // Worker may already be dead — ignore
+      .catch((err) => {
+        console.warn('[GeminiAgentManager] stop() failed during kill:', err);
       })
       .then(() => new Promise<void>((resolve) => setTimeout(resolve, GRACE_PERIOD_MS)))
-      .finally(() => {
-        clearTimeout(hardTimer);
-        super.kill();
-      });
+      .finally(doKill);
+  }
+
+  /**
+   * Hot-switch to a different model within the same provider.
+   * Delegates to GeminiAgent.switchModel() via IPC — no agent rebuild needed.
+   */
+  async switchModel(modelName: string): Promise<void> {
+    await this.bootstrap; // ensure agent is initialized
+    this.model = { ...this.model, useModel: modelName };
+    return this.postMessagePromise('switch.model', { modelName });
   }
 
   // Manually trigger context reload

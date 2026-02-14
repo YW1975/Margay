@@ -59,8 +59,11 @@ export const DEFAULT_CONTEXT_LIMIT = 1_048_576;
 /**
  * 根据模型名称获取 context limit
  * 支持模糊匹配，例如 "gemini-2.5-pro-latest" 会匹配 "gemini-2.5-pro"
+ * @param providerContextLimit - Provider 自定义的 context limit，优先于内置表
  */
-export function getModelContextLimit(modelName: string | undefined | null): number {
+export function getModelContextLimit(modelName: string | undefined | null, providerContextLimit?: number): number {
+  // Provider custom value takes priority over builtin table
+  if (providerContextLimit && providerContextLimit > 0) return providerContextLimit;
   if (!modelName) return DEFAULT_CONTEXT_LIMIT;
 
   const lowerModelName = modelName.toLowerCase();

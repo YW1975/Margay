@@ -248,12 +248,38 @@ export function initConversationBridge(): void {
 
       const result = await Promise.resolve(db.updateConversation(id, finalUpdates));
 
-      // If model changed, kill running task to force rebuild with new model on next send
+      // If model changed, try hot-switch for same-provider Gemini, otherwise kill+rebuild
       if (result.success && modelChanged) {
+        const isSameProvider = prevModel && nextModel && prevModel.id === nextModel.id;
+        const task = WorkerManage.getTaskById(id);
+        if (isSameProvider && task && task.type === 'gemini') {
+          try {
+            // Same provider: hot-switch via config.setModel() — no agent rebuild
+            await (task as GeminiAgentManager).switchModel(nextModel!.useModel);
+          } catch {
+            // switchModel failed, fallback to kill+rebuild
+            try {
+              WorkerManage.kill(id);
+            } catch {
+              /* ignore */
+            }
+          }
+        } else {
+          // Cross provider: kill + lazy rebuild (different auth context)
+          try {
+            WorkerManage.kill(id);
+          } catch {
+            /* ignore */
+          }
+        }
+        // Clear persisted lastTokenUsage to avoid stale data on reload
         try {
-          WorkerManage.kill(id);
-        } catch (killErr) {
-          // ignore kill error, will lazily rebuild later
+          const conv = db.getConversation(id);
+          if (conv.success && conv.data) {
+            db.updateConversation(id, { extra: { ...conv.data.extra, lastTokenUsage: undefined } } as Partial<TChatConversation>);
+          }
+        } catch {
+          /* ignore */
         }
       }
 

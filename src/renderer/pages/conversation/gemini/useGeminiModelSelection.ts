@@ -2,6 +2,7 @@ import { ipcBridge } from '@/common';
 import type { IProvider, TProviderWithModel } from '@/common/storage';
 import { useGeminiGoogleAuthModels } from '@/renderer/hooks/useGeminiGoogleAuthModels';
 import type { GeminiModeOption } from '@/renderer/hooks/useModeModeList';
+import { emitter } from '@/renderer/utils/emitter';
 import { hasSpecificModelCapability } from '@/renderer/utils/modelCapabilities';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
@@ -59,13 +60,8 @@ export const useGeminiModelSelection = (conversationId: string | undefined, init
   const providers = useMemo(() => {
     // 根据是否启用 Google Auth 动态拼接 provider 列表
     // Dynamically build provider list when Google Auth provider is available
-    // Filter to Google-native platforms only — gemini-cli-core v0.24.0 does not support
-    // OpenAI/Anthropic content generators. Non-Google providers should use ACP engines.
-    const isGoogleNativePlatform = (platform?: string) => {
-      const p = platform?.toLowerCase() || '';
-      return p.includes('gemini') || p.includes('google') || p.includes('vertex');
-    };
-    let list: IProvider[] = (Array.isArray(modelConfig) ? modelConfig : []).filter((p) => isGoogleNativePlatform(p.platform));
+    // v0.28.0 supports OpenAI/Anthropic content generators, show all providers
+    let list: IProvider[] = Array.isArray(modelConfig) ? modelConfig : [];
     if (isGoogleAuth) {
       const googleProvider: IProvider = {
         id: 'google-auth-gemini',
@@ -84,10 +80,18 @@ export const useGeminiModelSelection = (conversationId: string | undefined, init
   const handleSelectModel = useCallback(
     async (provider: IProvider, modelName: string) => {
       if (!conversationId) return;
+      // A4: Validate model exists in provider (skip for Google Auth which uses dynamic model list)
+      const isGoogleAuthProvider = provider.platform?.toLowerCase().includes('gemini-with-google-auth');
+      if (!isGoogleAuthProvider && provider.model && !provider.model.includes(modelName)) {
+        console.warn(`[useGeminiModelSelection] Model "${modelName}" not found in provider "${provider.name}"`);
+        return;
+      }
       const selected: TProviderWithModel = { ...(provider as unknown as TProviderWithModel), useModel: modelName };
       const ok = await ipcBridge.conversation.update.invoke({ id: conversationId, updates: { model: selected } });
       if (ok) {
         setCurrentModel(selected);
+        // A6: Emit model changed event for token usage reset
+        emitter.emit('gemini.model.changed');
       }
     },
     [conversationId]

@@ -30,6 +30,12 @@ interface EventTypes {
   'preview.open': [{ content: string; contentType: PreviewContentType; metadata?: { title?: string; fileName?: string } }];
   // 填充输入框事件 / Fill sendbox input event
   'sendbox.fill': [string]; // prompt text to fill
+  // Gemini 模型切换事件 / Gemini model changed event
+  'gemini.model.changed': void;
+  // Valentine greeting intercept event / 情人节问候拦截事件
+  'valentine.greeting': void;
+  // Valentine love letter reveal event / 情人节情书揭示事件
+  'valentine.loveletter': void;
 }
 
 export const emitter = new EventEmitter<EventTypes>();

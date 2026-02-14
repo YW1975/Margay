@@ -5,7 +5,7 @@
  */
 
 import { AuthType, getOauthInfoWithCache, loginWithOauth } from '@/agent/gemini/auth-compat';
-import { clearCachedCredentialFile, Config, Storage } from '@margay/agent-core';
+import { clearCachedCredentialFile, Config, Storage } from '@/agent/gemini/core-facade';
 import { ipcBridge } from '../../common';
 import * as fs from 'node:fs';
 

@@ -5,7 +5,7 @@
  */
 
 import type { FunctionDeclaration, PartListUnion } from '@google/genai';
-import { ToolErrorType } from '@margay/agent-core';
+import { ToolErrorType } from '../../core-facade';
 import type { DiffUpdateResult } from '../ide/ideContext';
 import { SchemaValidator } from '../utils/schemaValidator';
 

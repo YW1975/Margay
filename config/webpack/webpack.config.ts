@@ -53,5 +53,14 @@ export const mainConfig: Configuration = {
     // Handle ?binary WASM imports from @margay/agent-core - let them fail so fallback can work
     'web-tree-sitter/tree-sitter.wasm?binary': 'commonjs web-tree-sitter/tree-sitter.wasm',
     'tree-sitter-bash/tree-sitter-bash.wasm?binary': 'commonjs tree-sitter-bash/tree-sitter-bash.wasm',
+    // ajv/ajv-formats: @margay/agent-core 的 schemaValidator.js 是 ESM 但 ajv 是 CJS，
+    // webpack ESM/CJS interop 会破坏 Ajv 构造函数的 opts.code 初始化。
+    // 外部化后让 Node.js require() 原生处理 CJS 加载。
+    // ajv/ajv-formats: schemaValidator.js (ESM) importing ajv (CJS) breaks under webpack
+    // ESM/CJS interop — Ajv constructor opts.code becomes undefined. Externalize to use
+    // native Node.js require() which handles this correctly.
+    'ajv': 'commonjs ajv',
+    'ajv/dist/2020.js': 'commonjs ajv/dist/2020.js',
+    'ajv-formats': 'commonjs ajv-formats',
   },
 };

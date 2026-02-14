@@ -7,11 +7,10 @@
 import { getDatabase } from '@/process/database';
 import { getChannelMessageService } from '../agent/ChannelMessageService';
 import { ActionExecutor } from '../gateway/ActionExecutor';
-import { PluginManager, registerPlugin } from '../gateway/PluginManager';
+import { PluginManager } from '../gateway/PluginManager';
 import { PairingService } from '../pairing/PairingService';
-import { LarkPlugin } from '../plugins/lark/LarkPlugin';
-import { TelegramPlugin } from '../plugins/telegram/TelegramPlugin';
-import type { IChannelPluginConfig, PluginType } from '../types';
+import type { IChannelPluginConfig } from '../types';
+import { getDescriptor, initPluginRegistry } from './registry';
 import { SessionManager } from './SessionManager';
 
 /**
@@ -42,9 +41,6 @@ export class ChannelManager {
 
   private constructor() {
     // Private constructor for singleton pattern
-    // Register available plugins
-    registerPlugin('telegram', TelegramPlugin);
-    registerPlugin('lark', LarkPlugin);
   }
 
   /**
@@ -70,6 +66,9 @@ export class ChannelManager {
     console.log('[ChannelManager] Initializing...');
 
     try {
+      // Ensure descriptor registry is populated
+      initPluginRegistry();
+
       // Initialize sub-components
       this.pairingService = new PairingService();
       this.sessionManager = new SessionManager();
@@ -87,7 +86,7 @@ export class ChannelManager {
         // 查找用户
         // Find user
         const db = getDatabase();
-        const userResult = db.getChannelUserByPlatform(userId, platform as PluginType);
+        const userResult = db.getChannelUserByPlatform(userId, platform);
         if (!userResult.data) {
           console.error(`[ChannelManager] User not found: ${userId}@${platform}`);
           return;
@@ -216,29 +215,29 @@ export class ChannelManager {
     const existingResult = db.getChannelPlugin(pluginId);
     const existing = existingResult.data;
 
-    // Extract credentials from config based on plugin type
-    const pluginType = (existing?.type || this.getPluginTypeFromId(pluginId)) as PluginType;
-    let credentials = existing?.credentials;
+    // Extract credentials from config generically
+    const pluginType = existing?.type || this.getPluginTypeFromId(pluginId);
+    const descriptor = getDescriptor(pluginType);
 
-    if (pluginType === 'telegram') {
-      const token = config.token as string | undefined;
-      if (token) {
-        credentials = { token };
+    // Build credentials from config using descriptor's declared fields
+    let credentials = existing?.credentials;
+    if (descriptor) {
+      const incoming: Record<string, string> = {};
+      for (const field of descriptor.credentialFields) {
+        const val = config[field.key];
+        if (typeof val === 'string' && val) {
+          incoming[field.key] = val;
+        }
       }
-    } else if (pluginType === 'lark') {
-      const appId = config.appId as string | undefined;
-      const appSecret = config.appSecret as string | undefined;
-      const encryptKey = config.encryptKey as string | undefined;
-      const verificationToken = config.verificationToken as string | undefined;
-      if (appId && appSecret) {
-        credentials = { appId, appSecret, encryptKey, verificationToken };
+      if (Object.keys(incoming).length > 0) {
+        credentials = { ...credentials, ...incoming };
       }
     }
 
     const pluginConfig: IChannelPluginConfig = {
       id: pluginId,
       type: pluginType,
-      name: existing?.name || this.getPluginNameFromId(pluginId),
+      name: existing?.name || (descriptor?.displayName ? `${descriptor.displayName} Bot` : this.getPluginNameFromId(pluginId)),
       enabled: true,
       credentials,
       config: { ...existing?.config },
@@ -289,46 +288,33 @@ export class ChannelManager {
   }
 
   /**
-   * Test a plugin connection without enabling it
+   * Test a plugin connection without enabling it.
+   * Delegates to the platform descriptor's testConnection().
    */
-  async testPlugin(pluginId: string, token: string, extraConfig?: { appId?: string; appSecret?: string }): Promise<{ success: boolean; botUsername?: string; error?: string }> {
+  async testPlugin(pluginId: string, credentials: Record<string, string>): Promise<{ success: boolean; botUsername?: string; error?: string }> {
     const pluginType = this.getPluginTypeFromId(pluginId);
+    const descriptor = getDescriptor(pluginType);
 
-    if (pluginType === 'telegram') {
-      const result = await TelegramPlugin.testConnection(token);
-      return {
-        success: result.success,
-        botUsername: result.botInfo?.username,
-        error: result.error,
-      };
+    if (!descriptor) {
+      return { success: false, error: `Unknown plugin type: ${pluginType}` };
     }
 
-    if (pluginType === 'lark') {
-      const appId = extraConfig?.appId;
-      const appSecret = extraConfig?.appSecret;
-      if (!appId || !appSecret) {
-        return { success: false, error: 'App ID and App Secret are required for Lark' };
-      }
-      const result = await LarkPlugin.testConnection(appId, appSecret);
-      return {
-        success: result.success,
-        botUsername: result.botInfo?.name,
-        error: result.error,
-      };
-    }
-
-    return { success: false, error: `Unknown plugin type: ${pluginType}` };
+    return descriptor.testConnection(credentials);
   }
 
   /**
-   * Get plugin type from plugin ID
+   * Infer plugin type from plugin ID convention.
+   * Supports both '_' (existing: 'telegram_default') and '-' separators.
+   * Falls back to the pluginId itself if no separator is found.
    */
-  private getPluginTypeFromId(pluginId: string): PluginType {
-    if (pluginId.startsWith('telegram')) return 'telegram';
-    if (pluginId.startsWith('slack')) return 'slack';
-    if (pluginId.startsWith('discord')) return 'discord';
-    if (pluginId.startsWith('lark')) return 'lark';
-    return 'telegram'; // Default
+  private getPluginTypeFromId(pluginId: string): string {
+    // Try underscore first (existing convention: telegram_default, lark_default)
+    const underscoreIdx = pluginId.indexOf('_');
+    if (underscoreIdx > 0) return pluginId.substring(0, underscoreIdx);
+    // Also support dash for future IDs
+    const dashIdx = pluginId.indexOf('-');
+    if (dashIdx > 0) return pluginId.substring(0, dashIdx);
+    return pluginId;
   }
 
   /**

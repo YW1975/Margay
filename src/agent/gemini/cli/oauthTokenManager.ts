@@ -19,7 +19,7 @@
  * 4. Token Synchronization during concurrent requests / 并发请求时的 Token 同步
  */
 
-import { AuthType } from '@margay/agent-core';
+import { AuthType } from '../core-facade';
 
 // Token State / Token 状态
 export enum TokenState {

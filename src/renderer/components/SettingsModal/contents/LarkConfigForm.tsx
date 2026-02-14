@@ -170,8 +170,7 @@ const LarkConfigForm: React.FC<LarkConfigFormProps> = ({ pluginStatus, modelList
     try {
       const result = await channel.testPlugin.invoke({
         pluginId: 'lark_default',
-        token: '', // Not used for Lark
-        extraConfig: {
+        credentials: {
           appId: appId.trim(),
           appSecret: appSecret.trim(),
         },

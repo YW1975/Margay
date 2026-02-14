@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { MCPServerConfig, GeminiCLIExtension } from '@margay/agent-core';
+import type { MCPServerConfig, GeminiCLIExtension } from '../core-facade';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';

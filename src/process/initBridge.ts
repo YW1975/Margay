@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { logger } from '@office-ai/platform';
+import { logger } from '@/common/logger';
 import { initAllBridges } from './bridge';
 import { cronService } from '@process/services/cron/CronService';
 

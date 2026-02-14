@@ -1,0 +1,200 @@
+/* Starry Night Overlay - Ghibli-style dedication scene */
+
+.starry-night-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  cursor: pointer;
+  overflow: hidden;
+  animation: sn-fade-in 1.2s ease-out;
+}
+
+.starry-night-overlay--out {
+  animation: sn-fade-out 1s ease-in forwards;
+}
+
+@keyframes sn-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes sn-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Sky gradient */
+.starry-night-sky {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, #0a0a2e 0%, #16164d 25%, #1a1a5e 45%, #2d1b69 65%, #1a1a3e 100%);
+}
+
+/* Stars twinkling */
+.starry-night-star {
+  position: absolute;
+  border-radius: 50%;
+  background: #fff;
+  animation: sn-twinkle ease-in-out infinite alternate;
+}
+
+@keyframes sn-twinkle {
+  from {
+    opacity: 0.2;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+/* Shooting star */
+.starry-night-shooting-star {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow:
+    0 0 6px 2px rgba(255, 255, 255, 0.6),
+    -40px 0 20px 2px rgba(255, 255, 255, 0.3),
+    -80px 0 40px 1px rgba(255, 255, 255, 0.1);
+  animation: sn-shoot 3s ease-in infinite;
+  animation-delay: 2s;
+  opacity: 0;
+}
+
+@keyframes sn-shoot {
+  0% {
+    transform: translate(0, 0) rotate(-35deg);
+    opacity: 0;
+  }
+  5% {
+    opacity: 1;
+  }
+  20% {
+    transform: translate(300px, 180px) rotate(-35deg);
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Moon */
+.starry-night-moon {
+  position: absolute;
+  top: 8%;
+  right: 15%;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #ffeebb 0%, #ffdd88 50%, #eebb55 100%);
+  box-shadow:
+    0 0 40px 15px rgba(255, 238, 187, 0.3),
+    0 0 80px 30px rgba(255, 238, 187, 0.1);
+  animation: sn-moon-glow 4s ease-in-out infinite alternate;
+}
+
+@keyframes sn-moon-glow {
+  from {
+    box-shadow:
+      0 0 40px 15px rgba(255, 238, 187, 0.3),
+      0 0 80px 30px rgba(255, 238, 187, 0.1);
+  }
+  to {
+    box-shadow:
+      0 0 50px 20px rgba(255, 238, 187, 0.4),
+      0 0 100px 40px rgba(255, 238, 187, 0.15);
+  }
+}
+
+/* Ground / Hill */
+.starry-night-ground {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+/* Silhouettes container */
+.starry-night-silhouettes {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* Dedication text */
+.starry-night-text {
+  position: absolute;
+  bottom: 12%;
+  left: 0;
+  right: 0;
+  text-align: center;
+  animation: sn-text-in 1.5s ease-out 0.8s both;
+}
+
+@keyframes sn-text-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.starry-night-text__title {
+  font-family: 'Georgia', 'Palatino Linotype', 'Noto Serif SC', serif;
+  font-size: 32px;
+  color: #ffeebb;
+  text-shadow:
+    0 0 20px rgba(255, 238, 187, 0.5),
+    0 0 40px rgba(255, 238, 187, 0.2);
+  margin: 0 0 8px 0;
+  letter-spacing: 2px;
+}
+
+.starry-night-text__subtitle {
+  font-family: 'Georgia', 'Palatino Linotype', 'Noto Serif SC', serif;
+  font-size: 16px;
+  color: rgba(255, 238, 187, 0.6);
+  margin: 0;
+  letter-spacing: 1px;
+}
+
+/* Click hint */
+.starry-night-hint {
+  position: absolute;
+  bottom: 4%;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.25);
+  animation: sn-hint-pulse 2s ease-in-out infinite;
+}
+
+@keyframes sn-hint-pulse {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}

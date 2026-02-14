@@ -7,7 +7,7 @@
 import type { BrowserWindow } from 'electron';
 import { ipcMain } from 'electron';
 
-import { bridge } from '@office-ai/platform';
+import * as bridge from '@/common/platform-bridge';
 import { ADAPTER_BRIDGE_EVENT_KEY } from './constant';
 
 /**

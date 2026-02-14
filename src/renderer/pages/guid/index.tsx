@@ -8,7 +8,7 @@ import { ipcBridge } from '@/common';
 import { ASSISTANT_PRESETS } from '@/common/presets/assistantPresets';
 import type { IProvider, TProviderWithModel } from '@/common/storage';
 import { ConfigStorage } from '@/common/storage';
-import { resolveLocaleKey, uuid } from '@/common/utils';
+import { resolveLocaleKey } from '@/common/utils';
 import coworkSvg from '@/renderer/assets/cowork.svg';
 import AuggieLogo from '@/renderer/assets/logos/auggie.svg';
 import ClaudeLogo from '@/renderer/assets/logos/claude.svg';
@@ -149,7 +149,7 @@ const useModelList = () => {
 
     if (isGoogleAuth) {
       const geminiProvider: IProvider = {
-        id: uuid(),
+        id: 'google-auth-gemini',
         name: 'Gemini Google Auth',
         platform: 'gemini-with-google-auth',
         baseUrl: '',
@@ -230,11 +230,14 @@ const Guid: React.FC = () => {
     [activeBorderColor, activeShadow, inactiveBorderColor]
   );
 
-  // 从 location.state 中读取 workspace（从 tabs 的添加按钮传递）
+  // 从 location.state 中读取 workspace 和 agent（从 tabs 或 agent badge 传递）
   useEffect(() => {
-    const state = location.state as { workspace?: string } | null;
+    const state = location.state as { workspace?: string; agent?: string } | null;
     if (state?.workspace) {
       setDir(state.workspace);
+    }
+    if (state?.agent) {
+      _setSelectedAgentKey(state.agent);
     }
   }, [location.state]);
   const { modelList, isGoogleAuth, geminiModeOptions } = useModelList();

@@ -171,15 +171,20 @@ export function buildChatResponse(
 /**
  * Build an error response for chat failures
  */
-export function buildChatErrorResponse(error: string): {
+export function buildChatErrorResponse(
+  error: string,
+  platform?: string
+): {
   text: string;
   parseMode: 'HTML' | 'MarkdownV2' | 'Markdown';
   replyMarkup?: unknown;
 } {
+  // Only attach Telegram keyboard for telegram; other platforms handle buttons at plugin level
+  const replyMarkup = platform === 'telegram' || !platform ? createErrorRecoveryKeyboard() : undefined;
   return {
     text: `❌ <b>Processing Failed</b>\n\n${error}\n\nPlease retry or start a new conversation.`,
     parseMode: 'HTML',
-    replyMarkup: createErrorRecoveryKeyboard(),
+    replyMarkup,
   };
 }
 
