@@ -684,12 +684,14 @@ export class AcpAgent {
         return;
       }
 
+      // Issue 3 fix: 70s was too aggressive — user may be away.
+      // 10 minutes gives ample time to return and approve.
       setTimeout(() => {
         if (this.pendingPermissions.has(requestId)) {
           this.pendingPermissions.delete(requestId);
           reject(new Error('Permission request timed out'));
         }
-      }, 70000);
+      }, 600000);
     });
   }
 

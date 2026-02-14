@@ -519,25 +519,18 @@ export class AcpConnection {
   }
 
   // 恢复指定请求的超时计时器
+  // Issue 1 fix: Reset startTime on resume so pause duration doesn't count toward timeout
   private resumeRequestTimeout(requestId: number): void {
     const request = this.pendingRequests.get(requestId);
     if (request && request.isPaused) {
-      const elapsedTime = Date.now() - request.startTime;
-      const remainingTime = Math.max(0, request.timeoutDuration - elapsedTime);
-
-      if (remainingTime > 0) {
-        request.timeoutId = setTimeout(() => {
-          if (this.pendingRequests.has(requestId) && !request.isPaused) {
-            this.pendingRequests.delete(requestId);
-            request.reject(new Error(`Request ${request.method} timed out`));
-          }
-        }, remainingTime);
-        request.isPaused = false;
-      } else {
-        // 时间已超过，立即触发超时
-        this.pendingRequests.delete(requestId);
-        request.reject(new Error(`Request ${request.method} timed out`));
-      }
+      request.startTime = Date.now();
+      request.timeoutId = setTimeout(() => {
+        if (this.pendingRequests.has(requestId) && !request.isPaused) {
+          this.pendingRequests.delete(requestId);
+          request.reject(new Error(`Request ${request.method} timed out`));
+        }
+      }, request.timeoutDuration);
+      request.isPaused = false;
     }
   }
 

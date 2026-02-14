@@ -37,30 +37,18 @@ export interface AcpApprovalKey {
  * - execute: per-tool (kind + title only). "Always Allow" on any bash command
  *   approves ALL future bash commands in the session. This is coarser than
  *   Gemini's per-command-name granularity, but avoids excessive permission prompts.
- * - edit/read/fetch: per-path (kind + title + path/file_path). Each file path
- *   requires separate approval for safety.
+ * - edit/read/fetch: per-type (kind + title only). "Always Allow" on one edit
+ *   approves ALL future edits in the session, regardless of file path.
+ *   Issue 2 fix: removed per-path granularity to reduce excessive permission prompts.
  */
 function serializeKey(key: AcpApprovalKey): string {
-  const normalizedInput: Record<string, unknown> = {};
-
-  if (key.rawInput) {
-    // For execute operations: intentionally EXCLUDE command from key.
-    // This broadens "always allow" to cover all commands for the same tool
-    // (coarser than Gemini's per-command-name granularity).
-
-    // For file operations, include path-related fields for per-file approval
-    if (key.rawInput.path) {
-      normalizedInput.path = key.rawInput.path;
-    }
-    if (key.rawInput.file_path) {
-      normalizedInput.file_path = key.rawInput.file_path;
-    }
-  }
-
+  // Issue 2: Intentionally exclude path/file_path from the key for ALL operations.
+  // This makes "Always Allow" apply to the entire operation type (edit, read, execute)
+  // rather than per-file, matching the coarser granularity already used for execute.
   return JSON.stringify({
     kind: key.kind || 'unknown',
     title: key.title || '',
-    rawInput: normalizedInput,
+    rawInput: {},
   });
 }
 
