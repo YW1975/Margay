@@ -10,8 +10,8 @@ Full-stack social media operations across X (Twitter), Reddit, Hacker News, and 
 ## IMPORTANT RULES
 
 1. **Self-hosted API scripts** — This skill uses local TypeScript scripts in `scripts/` for platform access. No third-party MCP servers. API credentials are read from env vars or `~/.margay-config/social-ops.env`.
-2. **Dry-run by default** — All write operations (post, reply) run in dry-run mode unless `--execute --confirm-token=<token>` is passed. Always show the user a preview first.
-3. **Confirm-token flow** — For write operations: (1) dry-run preview, (2) generate a random token, (3) ask user to confirm with that token, (4) execute with `--execute --confirm-token=<token>`.
+2. **Dry-run by default** — All write operations (post, reply) run in dry-run mode unless `--execute --confirm-token=<token>` is passed. Always show the user a preview first. Note: X write is currently dry-run only (OAuth 1.0a TBD); only Reddit supports full execute.
+3. **Confirm-token flow** — For platforms that support execute (currently Reddit): (1) dry-run preview, (2) generate a random token, (3) ask user to confirm with that token, (4) execute with `--execute --confirm-token=<token>`. For X: stop at dry-run and present text for manual posting.
 4. **Audit log** — All operations (dry-run and execute) are logged to `~/.margay-config/social-ops-audit.jsonl`.
 5. **Follow reply guidelines** — All replies must follow `assets/reply-guidelines.md`.
 6. **Rate limiting** — Space out API calls. Do not batch-fire dozens of requests.

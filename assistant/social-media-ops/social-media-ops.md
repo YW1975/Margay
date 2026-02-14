@@ -32,12 +32,19 @@ If a script fails with "credentials not found", guide the user to set up credent
 
 ## Write Operation Safety
 
-All write operations (posting, replying) follow a strict confirmation flow:
+All write operations (posting, replying) start with a dry-run preview. The full execute flow depends on platform support:
 
-1. **Dry-run first**: Always run without `--execute` to show a preview
+**Reddit (full execute):**
+
+1. **Dry-run first**: Run without `--execute` to show a preview
 2. **Generate token**: Create a random confirmation token
 3. **Ask user**: Show the preview and ask the user to confirm with the token
 4. **Execute**: Only execute with `--execute --confirm-token=<token>` after user confirms
+
+**X (dry-run only — OAuth 1.0a TBD):**
+
+1. **Dry-run**: Run without `--execute` to generate a preview with character count
+2. **Present text**: Show the draft for the user to post manually via X app/web
 
 Never skip the dry-run step. Never auto-execute write operations.
 
