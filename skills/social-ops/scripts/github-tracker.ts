@@ -12,12 +12,22 @@
  * Requires: gh CLI installed and authenticated.
  */
 
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 
 const AUDIT_LOG = path.join(os.homedir(), '.margay-config', 'social-ops-audit.jsonl');
+
+// Strict repo format: owner/name, alphanumeric + dots/hyphens/underscores only
+const REPO_RE = /^[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+$/;
+
+function validateRepo(repo: string): void {
+  if (!REPO_RE.test(repo)) {
+    console.error(`[ERROR] Invalid repo format: "${repo}". Expected: owner/repo (alphanumeric, dots, hyphens, underscores)`);
+    process.exit(1);
+  }
+}
 
 function appendAudit(entry: Record<string, unknown>): void {
   const dir = path.dirname(AUDIT_LOG);
@@ -25,9 +35,9 @@ function appendAudit(entry: Record<string, unknown>): void {
   fs.appendFileSync(AUDIT_LOG, JSON.stringify({ ...entry, timestamp: new Date().toISOString() }) + '\n');
 }
 
-function gh(cmd: string): string {
+function ghExec(...args: string[]): string {
   try {
-    return execSync(`gh ${cmd}`, { encoding: 'utf-8', timeout: 30000 }).trim();
+    return execFileSync('gh', args, { encoding: 'utf-8', timeout: 30000 }).trim();
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     if (msg.includes('not found') || msg.includes('ENOENT')) {
@@ -38,8 +48,8 @@ function gh(cmd: string): string {
   }
 }
 
-function ghJson<T>(cmd: string): T {
-  const output = gh(cmd);
+function ghJson<T>(...args: string[]): T {
+  const output = ghExec(...args);
   return JSON.parse(output) as T;
 }
 
@@ -54,11 +64,15 @@ interface RepoInfo {
 }
 
 async function scan(repo: string): Promise<void> {
-  const info = ghJson<RepoInfo>(`api graphql -f query='{ repository(owner:"${repo.split('/')[0]}", name:"${repo.split('/')[1]}") { stargazerCount forkCount openIssues: issues(states:OPEN) { totalCount } pullRequests(states:OPEN) { totalCount } description name owner { login } } }' --jq '.data.repository'`);
+  validateRepo(repo);
+  const [owner, name] = repo.split('/');
+
+  const query = `{ repository(owner:"${owner}", name:"${name}") { stargazerCount forkCount openIssues: issues(states:OPEN) { totalCount } pullRequests(states:OPEN) { totalCount } description name owner { login } } }`;
+  const info = ghJson<RepoInfo>('api', 'graphql', '-f', `query=${query}`, '--jq', '.data.repository');
 
   // Recent activity
-  const recentIssues = gh(`issue list --repo ${repo} --limit 5 --json number,title,author,createdAt --state open`);
-  const recentPRs = gh(`pr list --repo ${repo} --limit 5 --json number,title,author,createdAt --state open`);
+  const recentIssuesRaw = ghExec('issue', 'list', '--repo', repo, '--limit', '5', '--json', 'number,title,author,createdAt', '--state', 'open');
+  const recentPRsRaw = ghExec('pr', 'list', '--repo', repo, '--limit', '5', '--json', 'number,title,author,createdAt', '--state', 'open');
 
   console.log(`## GitHub Scan — ${repo} — ${new Date().toISOString()}\n`);
   console.log(`> ${info.description || 'No description'}\n`);
@@ -70,7 +84,7 @@ async function scan(repo: string): Promise<void> {
   console.log(`| Open Issues | ${info.openIssues.totalCount} |`);
   console.log(`| Open PRs | ${info.pullRequests.totalCount} |`);
 
-  const issues = JSON.parse(recentIssues) as Array<{ number: number; title: string; author: { login: string }; createdAt: string }>;
+  const issues = JSON.parse(recentIssuesRaw) as Array<{ number: number; title: string; author: { login: string }; createdAt: string }>;
   if (issues.length > 0) {
     console.log('\n### Recent Issues\n');
     console.log('| # | Title | Author | Date |');
@@ -80,7 +94,7 @@ async function scan(repo: string): Promise<void> {
     }
   }
 
-  const prs = JSON.parse(recentPRs) as Array<{ number: number; title: string; author: { login: string }; createdAt: string }>;
+  const prs = JSON.parse(recentPRsRaw) as Array<{ number: number; title: string; author: { login: string }; createdAt: string }>;
   if (prs.length > 0) {
     console.log('\n### Recent PRs\n');
     console.log('| # | Title | Author | Date |');
@@ -94,7 +108,8 @@ async function scan(repo: string): Promise<void> {
 }
 
 async function listIssues(repo: string, limit: number): Promise<void> {
-  const output = gh(`issue list --repo ${repo} --limit ${limit} --json number,title,author,labels,createdAt,comments --state open`);
+  validateRepo(repo);
+  const output = ghExec('issue', 'list', '--repo', repo, '--limit', String(limit), '--json', 'number,title,author,labels,createdAt,comments', '--state', 'open');
   const issues = JSON.parse(output) as Array<{
     number: number;
     title: string;
@@ -115,7 +130,8 @@ async function listIssues(repo: string, limit: number): Promise<void> {
 }
 
 async function listPRs(repo: string, limit: number): Promise<void> {
-  const output = gh(`pr list --repo ${repo} --limit ${limit} --json number,title,author,createdAt,reviewDecision --state open`);
+  validateRepo(repo);
+  const output = ghExec('pr', 'list', '--repo', repo, '--limit', String(limit), '--json', 'number,title,author,createdAt,reviewDecision', '--state', 'open');
   const prs = JSON.parse(output) as Array<{
     number: number;
     title: string;
@@ -167,7 +183,7 @@ if (action === 'scan') {
   listPRs(repo, limit).catch((e) => console.error('[ERROR]', e.message));
 } else if (action === '--test') {
   try {
-    const version = gh('--version');
+    const version = ghExec('--version');
     console.log(`[TEST] github-tracker.ts loaded. gh CLI: ${version.split('\n')[0]}`);
   } catch {
     console.log('[TEST] github-tracker.ts loaded. gh CLI: not found');

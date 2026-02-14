@@ -19,12 +19,12 @@
 
 通过本地 API 脚本（非第三方 MCP 服务器）访问各平台，用 shell 命令运行：
 
-| 平台   | 脚本                                | 读取 | 写入 |
-| ------ | ----------------------------------- | ---- | ---- |
-| X      | `npx tsx scripts/x-api.ts`          | 是   | 是   |
-| Reddit | `npx tsx scripts/reddit-api.ts`     | 是   | 是   |
-| HN     | `npx tsx scripts/hn-api.ts`         | 是   | 否   |
-| GitHub | `npx tsx scripts/github-tracker.ts` | 是   | 否   |
+| 平台   | 脚本                                | 读取 | 写入                            |
+| ------ | ----------------------------------- | ---- | ------------------------------- |
+| X      | `npx tsx scripts/x-api.ts`          | 是   | 仅 dry-run（OAuth 1.0a 待实现） |
+| Reddit | `npx tsx scripts/reddit-api.ts`     | 是   | 是                              |
+| HN     | `npx tsx scripts/hn-api.ts`         | 是   | 否                              |
+| GitHub | `npx tsx scripts/github-tracker.ts` | 是   | 否                              |
 
 如果脚本报"凭据未找到"，引导用户参考 `assets/credentials-setup.md` 配置。
 

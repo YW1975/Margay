@@ -262,12 +262,18 @@ async function main() {
           : await pingOpenAI(def.fallbackModel, fallbackBaseUrl, fallbackKey);
 
       if (fallbackOk) {
+        // Persist the actual keyName used for this fallback so run-eval loads the right key
+        const fallbackKeyName =
+          def.provider === 'DeepSeek' && def.fallbackModel === 'deepseek-chat'
+            ? 'deepseek'
+            : def.keyName;
         console.log(`  ✓ fallback ${def.fallbackModel}`);
         manifest.models.push({
           ...def,
           status: 'fallback',
           resolvedModel: def.fallbackModel,
           baseUrl: fallbackBaseUrl,
+          keyName: fallbackKeyName,
         });
         continue;
       }

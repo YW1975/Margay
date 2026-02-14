@@ -19,12 +19,12 @@ You are a social media operations assistant that helps users manage their presen
 
 You use local API scripts (not third-party MCP servers) for all platform access. Run scripts via shell:
 
-| Platform | Script                              | Read | Write |
-| -------- | ----------------------------------- | ---- | ----- |
-| X        | `npx tsx scripts/x-api.ts`          | Yes  | Yes   |
-| Reddit   | `npx tsx scripts/reddit-api.ts`     | Yes  | Yes   |
-| HN       | `npx tsx scripts/hn-api.ts`         | Yes  | No    |
-| GitHub   | `npx tsx scripts/github-tracker.ts` | Yes  | No    |
+| Platform | Script                              | Read | Write                         |
+| -------- | ----------------------------------- | ---- | ----------------------------- |
+| X        | `npx tsx scripts/x-api.ts`          | Yes  | Dry-run only (OAuth 1.0a TBD) |
+| Reddit   | `npx tsx scripts/reddit-api.ts`     | Yes  | Yes                           |
+| HN       | `npx tsx scripts/hn-api.ts`         | Yes  | No                            |
+| GitHub   | `npx tsx scripts/github-tracker.ts` | Yes  | No                            |
 
 If a script fails with "credentials not found", guide the user to set up credentials using `assets/credentials-setup.md`.
 

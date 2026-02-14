@@ -22,12 +22,12 @@ Full-stack social media operations across X (Twitter), Reddit, Hacker News, and 
 
 ## Platform Capabilities
 
-| Platform    | Read | Write             | Script                      | Auth                    |
-| ----------- | ---- | ----------------- | --------------------------- | ----------------------- |
-| X (Twitter) | Yes  | Yes (post, reply) | `scripts/x-api.ts`          | Bearer Token (X API v2) |
-| Reddit      | Yes  | Yes (post, reply) | `scripts/reddit-api.ts`     | OAuth2 (script app)     |
-| Hacker News | Yes  | No (suggest text) | `scripts/hn-api.ts`         | None                    |
-| GitHub      | Yes  | No (read-only)    | `scripts/github-tracker.ts` | `gh` CLI (PAT)          |
+| Platform    | Read | Write                                 | Script                      | Auth                                          |
+| ----------- | ---- | ------------------------------------- | --------------------------- | --------------------------------------------- |
+| X (Twitter) | Yes  | Dry-run only (OAuth 1.0a signing TBD) | `scripts/x-api.ts`          | Bearer Token (read) / OAuth 1.0a (write, TBD) |
+| Reddit      | Yes  | Yes (post, reply)                     | `scripts/reddit-api.ts`     | OAuth2 (script app)                           |
+| Hacker News | Yes  | No (suggest text)                     | `scripts/hn-api.ts`         | None                                          |
+| GitHub      | Yes  | No (read-only)                        | `scripts/github-tracker.ts` | `gh` CLI (PAT)                                |
 
 ---
 
