@@ -43,11 +43,11 @@ npx tsx scripts/hn-api.ts scan --user <username>
 npx tsx scripts/github-tracker.ts scan --repo <owner/repo>
 
 # Write operations (dry-run by default)
-npx tsx scripts/x-api.ts post "content"
 npx tsx scripts/reddit-api.ts post --subreddit <name> --title "title" --body "body"
+npx tsx scripts/x-api.ts post "content"   # dry-run preview only (OAuth 1.0a TBD)
 
-# Write with execution
-npx tsx scripts/x-api.ts post "content" --execute --confirm-token=abc123
+# Write with execution (Reddit only — X execute requires OAuth 1.0a, not yet implemented)
+npx tsx scripts/reddit-api.ts post --subreddit <name> --title "title" --body "body" --execute --confirm-token=abc123
 ```
 
 If a script fails with "credentials not found", direct the user to `assets/credentials-setup.md`.
@@ -93,28 +93,40 @@ Scan one or more platforms for engagement.
 | Open PRs | 8 | -2 |
 ```
 
-### 2. Post — "Post this to X/Reddit"
+### 2. Post — "Post this to Reddit" / "Draft a tweet"
 
 Create new posts on supported platforms.
 
-**Steps:**
+**Reddit (full execute):**
 
 1. User provides content (or asks for content generation)
 2. Generate content following platform guidelines and `assets/post-templates.md`
-3. Dry-run: `npx tsx scripts/x-api.ts post "content"`
+3. Dry-run: `npx tsx scripts/reddit-api.ts post --subreddit <name> --title "title" --body "body"`
 4. Show preview to user, generate confirm token
-5. On approval: `npx tsx scripts/x-api.ts post "content" --execute --confirm-token=<token>`
+5. On approval: add `--execute --confirm-token=<token>`
 6. Confirm with post URL
+
+**X (dry-run only — OAuth 1.0a TBD):**
+
+1. Generate content following X guidelines and `assets/post-templates.md`
+2. Dry-run: `npx tsx scripts/x-api.ts post "content"` — shows character count preview
+3. Present the draft text; user must post manually via X app/web until OAuth 1.0a is implemented
 
 ### 3. Reply — "Reply to this comment"
 
-**X / Reddit (auto-reply with confirmation):**
+**Reddit (auto-reply with confirmation):**
 
 1. User identifies the post/comment to respond to
 2. Draft reply following `assets/reply-guidelines.md`
 3. Dry-run the reply
 4. Show draft to user, generate confirm token
 5. On approval, execute with `--execute --confirm-token=<token>`
+
+**X (dry-run only — OAuth 1.0a TBD):**
+
+1. Draft reply following `assets/reply-guidelines.md`
+2. Dry-run: `npx tsx scripts/x-api.ts reply --tweet-id <id> "content"` — shows preview
+3. Present the draft text; user must reply manually via X app/web
 
 **HN (suggested reply):**
 
