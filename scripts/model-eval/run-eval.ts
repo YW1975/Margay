@@ -209,7 +209,10 @@ async function callOpenAIApi(
       body: JSON.stringify({
         model: config.model,
         messages,
-        max_tokens: prompt.maxTokens || 1024,
+        // OpenAI direct API (gpt-5.x) requires max_completion_tokens; others use max_tokens
+        ...(config.baseUrl.includes('api.openai.com')
+          ? { max_completion_tokens: prompt.maxTokens || 1024 }
+          : { max_tokens: prompt.maxTokens || 1024 }),
       }),
       signal: controller.signal,
     });

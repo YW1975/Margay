@@ -38,25 +38,46 @@ interface ModelManifest {
 }
 
 // --- v2.0 model definitions ---
+// Each entry is a distinct model to evaluate (same provider can appear multiple times).
+// This evaluates model characteristics, not provider-vs-provider.
 const MODEL_DEFS: Omit<ModelEntry, 'status' | 'resolvedModel' | 'skipReason'>[] = [
+  // --- OpenAI ---
   {
-    provider: 'OpenAI',
-    primaryModel: 'gpt-5.2-codex',
-    fallbackModel: 'gpt-5.2',
+    provider: 'OpenAI-Chat',
+    primaryModel: 'gpt-5.2',
+    fallbackModel: 'gpt-4.1',
     mode: 'openai-api',
     baseUrl: 'https://api.openai.com/v1',
     keyName: 'openai',
   },
   {
-    provider: 'Google',
+    provider: 'OpenAI-Mini',
+    primaryModel: 'gpt-4.1-mini',
+    fallbackModel: 'gpt-4.1-nano',
+    mode: 'openai-api',
+    baseUrl: 'https://api.openai.com/v1',
+    keyName: 'openai',
+  },
+  // --- Google ---
+  {
+    provider: 'Gemini-Pro',
     primaryModel: 'gemini-3-pro',
-    fallbackModel: 'gemini-3-flash',
+    fallbackModel: 'gemini-2.5-pro',
     mode: 'gemini-engine',
     baseUrl: '',
     keyName: 'gemini',
   },
   {
-    provider: 'Anthropic',
+    provider: 'Gemini-Flash',
+    primaryModel: 'gemini-3-flash',
+    fallbackModel: 'gemini-2.5-flash',
+    mode: 'gemini-engine',
+    baseUrl: '',
+    keyName: 'gemini',
+  },
+  // --- Anthropic ---
+  {
+    provider: 'Claude-Opus',
     primaryModel: 'anthropic/claude-opus-4.6',
     fallbackModel: 'anthropic/claude-opus-4.5',
     mode: 'openai-api',
@@ -64,31 +85,42 @@ const MODEL_DEFS: Omit<ModelEntry, 'status' | 'resolvedModel' | 'skipReason'>[] 
     keyName: 'openrouter',
   },
   {
-    provider: 'DeepSeek',
-    primaryModel: 'deepseek/deepseek-v3.2',
-    fallbackModel: 'deepseek-chat',
+    provider: 'Claude-Sonnet',
+    primaryModel: 'anthropic/claude-sonnet-4.5',
+    fallbackModel: 'anthropic/claude-sonnet-4',
     mode: 'openai-api',
     baseUrl: 'https://openrouter.ai/api/v1',
     keyName: 'openrouter',
   },
+  // --- DeepSeek ---
   {
-    provider: 'MiniMax',
-    primaryModel: 'minimax/minimax-m2.5',
-    fallbackModel: 'minimax/minimax-m2.1',
-    mode: 'openai-api',
-    baseUrl: 'https://openrouter.ai/api/v1',
-    keyName: 'openrouter',
-  },
-  {
-    provider: 'Zhipu',
-    primaryModel: 'z-ai/glm-5',
+    provider: 'DeepSeek-Chat',
+    primaryModel: 'deepseek-chat',
     fallbackModel: null,
     mode: 'openai-api',
-    baseUrl: 'https://openrouter.ai/api/v1',
-    keyName: 'openrouter',
+    baseUrl: 'https://api.deepseek.com',
+    keyName: 'deepseek',
   },
   {
-    provider: 'Qwen',
+    provider: 'DeepSeek-Coder',
+    primaryModel: 'deepseek-coder',
+    fallbackModel: null,
+    mode: 'openai-api',
+    baseUrl: 'https://api.deepseek.com',
+    keyName: 'deepseek',
+  },
+  // --- MiniMax ---
+  {
+    provider: 'MiniMax',
+    primaryModel: 'MiniMax-M1',
+    fallbackModel: null,
+    mode: 'openai-api',
+    baseUrl: 'https://api.minimax.chat/v1',
+    keyName: 'minimax',
+  },
+  // --- Qwen ---
+  {
+    provider: 'Qwen-Chat',
     primaryModel: 'qwen/qwen3-max-thinking',
     fallbackModel: 'qwen/qwen3-max',
     mode: 'openai-api',
@@ -103,6 +135,16 @@ const MODEL_DEFS: Omit<ModelEntry, 'status' | 'resolvedModel' | 'skipReason'>[] 
     baseUrl: 'https://openrouter.ai/api/v1',
     keyName: 'openrouter',
   },
+  // --- Zhipu ---
+  {
+    provider: 'Zhipu-GLM',
+    primaryModel: 'z-ai/glm-5',
+    fallbackModel: null,
+    mode: 'openai-api',
+    baseUrl: 'https://openrouter.ai/api/v1',
+    keyName: 'openrouter',
+  },
+  // --- Kimi ---
   {
     provider: 'Kimi',
     primaryModel: 'moonshotai/kimi-k2.5',
@@ -111,8 +153,9 @@ const MODEL_DEFS: Omit<ModelEntry, 'status' | 'resolvedModel' | 'skipReason'>[] 
     baseUrl: 'https://openrouter.ai/api/v1',
     keyName: 'openrouter',
   },
+  // --- Baidu ---
   {
-    provider: 'Baidu',
+    provider: 'Baidu-ERNIE',
     primaryModel: 'baidu/ernie-4.5-300b-a47b',
     fallbackModel: null,
     mode: 'openai-api',
@@ -144,6 +187,12 @@ async function pingOpenAI(model: string, baseUrl: string, apiKey: string): Promi
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), PING_TIMEOUT_MS);
   try {
+    // OpenAI direct API (gpt-5.x) requires max_completion_tokens; others use max_tokens
+    const isOpenAIDirect = baseUrl.includes('api.openai.com');
+    const tokenLimit = isOpenAIDirect
+      ? { max_completion_tokens: 8 }
+      : { max_tokens: 8 };
+
     const resp = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -156,7 +205,7 @@ async function pingOpenAI(model: string, baseUrl: string, apiKey: string): Promi
       body: JSON.stringify({
         model,
         messages: [{ role: 'user', content: 'Say "ok".' }],
-        max_tokens: 8,
+        ...tokenLimit,
       }),
       signal: controller.signal,
     });
@@ -165,8 +214,10 @@ async function pingOpenAI(model: string, baseUrl: string, apiKey: string): Promi
       console.log(`    HTTP ${resp.status}: ${body.slice(0, 120)}`);
       return false;
     }
-    const data = (await resp.json()) as { choices?: { message?: { content?: string } }[] };
-    return !!(data.choices?.[0]?.message?.content);
+    // Accept any 200 with choices — some reasoning models return empty content
+    // when max_tokens is too low for both thinking and generation
+    const data = (await resp.json()) as { choices?: unknown[] };
+    return Array.isArray(data.choices) && data.choices.length > 0;
   } catch (err: any) {
     console.log(`    ${err.name === 'AbortError' ? 'timeout' : err.message?.slice(0, 100)}`);
     return false;
@@ -248,32 +299,17 @@ async function main() {
     if (def.fallbackModel) {
       console.log(`  ✗ primary failed, trying fallback: ${def.fallbackModel}`);
 
-      // Fallback may use a different baseUrl (e.g. DeepSeek direct API vs OpenRouter)
-      let fallbackBaseUrl = def.baseUrl;
-      let fallbackKey = apiKey;
-      if (def.provider === 'DeepSeek' && def.fallbackModel === 'deepseek-chat') {
-        fallbackBaseUrl = 'https://api.deepseek.com';
-        fallbackKey = keys['deepseek'] || apiKey;
-      }
-
       const fallbackOk =
         def.mode === 'gemini-engine'
-          ? await pingGemini(def.fallbackModel, fallbackKey)
-          : await pingOpenAI(def.fallbackModel, fallbackBaseUrl, fallbackKey);
+          ? await pingGemini(def.fallbackModel, apiKey)
+          : await pingOpenAI(def.fallbackModel, def.baseUrl, apiKey);
 
       if (fallbackOk) {
-        // Persist the actual keyName used for this fallback so run-eval loads the right key
-        const fallbackKeyName =
-          def.provider === 'DeepSeek' && def.fallbackModel === 'deepseek-chat'
-            ? 'deepseek'
-            : def.keyName;
         console.log(`  ✓ fallback ${def.fallbackModel}`);
         manifest.models.push({
           ...def,
           status: 'fallback',
           resolvedModel: def.fallbackModel,
-          baseUrl: fallbackBaseUrl,
-          keyName: fallbackKeyName,
         });
         continue;
       }
