@@ -1,5 +1,5 @@
 /**
- * Model Eval v2.0 — Preflight resolver.
+ * Model Eval v3.0 — Preflight resolver.
  * Queries API availability for each model and writes a locked manifest.
  *
  * Usage:
@@ -16,13 +16,13 @@ const PROJECT_ROOT = path.resolve(__dirname, '../..');
 const KEY_FILE = path.resolve(PROJECT_ROOT, 'models_test.key');
 const MANIFEST_FILE = path.resolve(__dirname, 'model-manifest.json');
 
-const PING_TIMEOUT_MS = 5_000;
+const PING_TIMEOUT_MS = 8_000;
 
 interface ModelEntry {
   provider: string;
   primaryModel: string;
   fallbackModel: string | null;
-  mode: 'gemini-engine' | 'openai-api';
+  mode: 'gemini-engine' | 'openai-api' | 'anthropic-api';
   baseUrl: string;
   keyName: string;
   /** Resolved after ping */
@@ -37,7 +37,7 @@ interface ModelManifest {
   models: ModelEntry[];
 }
 
-// --- v2.0 model definitions ---
+// --- v3.0 model definitions ---
 // Each entry is a distinct model to evaluate (same provider can appear multiple times).
 // This evaluates model characteristics, not provider-vs-provider.
 const MODEL_DEFS: Omit<ModelEntry, 'status' | 'resolvedModel' | 'skipReason'>[] = [
@@ -75,22 +75,22 @@ const MODEL_DEFS: Omit<ModelEntry, 'status' | 'resolvedModel' | 'skipReason'>[] 
     baseUrl: '',
     keyName: 'gemini',
   },
-  // --- Anthropic ---
+  // --- Anthropic (direct API) ---
   {
     provider: 'Claude-Opus',
-    primaryModel: 'anthropic/claude-opus-4.6',
-    fallbackModel: 'anthropic/claude-opus-4.5',
-    mode: 'openai-api',
-    baseUrl: 'https://openrouter.ai/api/v1',
-    keyName: 'openrouter',
+    primaryModel: 'claude-opus-4-6',
+    fallbackModel: 'claude-opus-4-5',
+    mode: 'anthropic-api',
+    baseUrl: 'https://api.anthropic.com',
+    keyName: 'anthropic',
   },
   {
     provider: 'Claude-Sonnet',
-    primaryModel: 'anthropic/claude-sonnet-4.5',
-    fallbackModel: 'anthropic/claude-sonnet-4',
-    mode: 'openai-api',
-    baseUrl: 'https://openrouter.ai/api/v1',
-    keyName: 'openrouter',
+    primaryModel: 'claude-sonnet-4-5-20250929',
+    fallbackModel: 'claude-sonnet-4-20250514',
+    mode: 'anthropic-api',
+    baseUrl: 'https://api.anthropic.com',
+    keyName: 'anthropic',
   },
   // --- DeepSeek ---
   {
@@ -165,6 +165,12 @@ const MODEL_DEFS: Omit<ModelEntry, 'status' | 'resolvedModel' | 'skipReason'>[] 
 ];
 
 // --- Key loading ---
+// Supports common typos: "calude" → "anthropic"
+const KEY_ALIASES: Record<string, string> = {
+  calude: 'anthropic',
+  claude: 'anthropic',
+};
+
 function loadKeys(): Record<string, string> {
   const content = fs.readFileSync(KEY_FILE, 'utf-8');
   const keys: Record<string, string> = {};
@@ -175,23 +181,23 @@ function loadKeys(): Record<string, string> {
     if (!cleanLine) continue;
     const colonIdx = cleanLine.indexOf(':');
     if (colonIdx <= 0) continue;
-    const provider = cleanLine.slice(0, colonIdx).trim().toLowerCase();
+    let provider = cleanLine.slice(0, colonIdx).trim().toLowerCase();
     const key = cleanLine.slice(colonIdx + 1).trim();
+    // Apply alias mapping
+    if (KEY_ALIASES[provider]) provider = KEY_ALIASES[provider];
     if (key) keys[provider] = key;
   }
   return keys;
 }
 
-// --- Ping a model via OpenAI-compatible API ---
+// --- Ping via OpenAI-compatible API ---
 async function pingOpenAI(model: string, baseUrl: string, apiKey: string): Promise<boolean> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), PING_TIMEOUT_MS);
   try {
     // OpenAI direct API (gpt-5.x) requires max_completion_tokens; others use max_tokens
     const isOpenAIDirect = baseUrl.includes('api.openai.com');
-    const tokenLimit = isOpenAIDirect
-      ? { max_completion_tokens: 8 }
-      : { max_tokens: 8 };
+    const tokenLimit = isOpenAIDirect ? { max_completion_tokens: 8 } : { max_tokens: 8 };
 
     const resp = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
@@ -215,9 +221,42 @@ async function pingOpenAI(model: string, baseUrl: string, apiKey: string): Promi
       return false;
     }
     // Accept any 200 with choices — some reasoning models return empty content
-    // when max_tokens is too low for both thinking and generation
     const data = (await resp.json()) as { choices?: unknown[] };
     return Array.isArray(data.choices) && data.choices.length > 0;
+  } catch (err: any) {
+    console.log(`    ${err.name === 'AbortError' ? 'timeout' : err.message?.slice(0, 100)}`);
+    return false;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+// --- Ping via Anthropic Messages API ---
+async function pingAnthropic(model: string, apiKey: string): Promise<boolean> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), PING_TIMEOUT_MS);
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 8,
+        messages: [{ role: 'user', content: 'Say "ok".' }],
+      }),
+      signal: controller.signal,
+    });
+    if (!resp.ok) {
+      const body = await resp.text().catch(() => '');
+      console.log(`    HTTP ${resp.status}: ${body.slice(0, 120)}`);
+      return false;
+    }
+    const data = (await resp.json()) as { content?: unknown[] };
+    return Array.isArray(data.content) && data.content.length > 0;
   } catch (err: any) {
     console.log(`    ${err.name === 'AbortError' ? 'timeout' : err.message?.slice(0, 100)}`);
     return false;
@@ -231,7 +270,6 @@ async function pingGemini(model: string, apiKey: string): Promise<boolean> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), PING_TIMEOUT_MS);
   try {
-    // Use Gemini REST API directly for ping (faster than loading core)
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
     const resp = await fetch(url, {
       method: 'POST',
@@ -256,15 +294,32 @@ async function pingGemini(model: string, apiKey: string): Promise<boolean> {
   }
 }
 
+// --- Dispatch ping by mode ---
+function pingModel(
+  mode: ModelEntry['mode'],
+  model: string,
+  baseUrl: string,
+  apiKey: string,
+): Promise<boolean> {
+  switch (mode) {
+    case 'gemini-engine':
+      return pingGemini(model, apiKey);
+    case 'anthropic-api':
+      return pingAnthropic(model, apiKey);
+    case 'openai-api':
+      return pingOpenAI(model, baseUrl, apiKey);
+  }
+}
+
 // --- Main ---
 async function main() {
-  console.log('=== Model Eval v2.0 — Resolve Models ===\n');
+  console.log('=== Model Eval v3.0 — Resolve Models ===\n');
 
   const keys = loadKeys();
   console.log(`Loaded keys: ${Object.keys(keys).join(', ')}\n`);
 
   const manifest: ModelManifest = {
-    version: '2.0',
+    version: '3.0',
     resolvedAt: new Date().toISOString(),
     models: [],
   };
@@ -284,10 +339,7 @@ async function main() {
 
     // Ping primary
     console.log(`[PING] ${def.provider} — ${def.primaryModel}`);
-    const primaryOk =
-      def.mode === 'gemini-engine'
-        ? await pingGemini(def.primaryModel, apiKey)
-        : await pingOpenAI(def.primaryModel, def.baseUrl, apiKey);
+    const primaryOk = await pingModel(def.mode, def.primaryModel, def.baseUrl, apiKey);
 
     if (primaryOk) {
       console.log(`  ✓ ${def.primaryModel}`);
@@ -298,19 +350,11 @@ async function main() {
     // Try fallback
     if (def.fallbackModel) {
       console.log(`  ✗ primary failed, trying fallback: ${def.fallbackModel}`);
-
-      const fallbackOk =
-        def.mode === 'gemini-engine'
-          ? await pingGemini(def.fallbackModel, apiKey)
-          : await pingOpenAI(def.fallbackModel, def.baseUrl, apiKey);
+      const fallbackOk = await pingModel(def.mode, def.fallbackModel, def.baseUrl, apiKey);
 
       if (fallbackOk) {
         console.log(`  ✓ fallback ${def.fallbackModel}`);
-        manifest.models.push({
-          ...def,
-          status: 'fallback',
-          resolvedModel: def.fallbackModel,
-        });
+        manifest.models.push({ ...def, status: 'fallback', resolvedModel: def.fallbackModel });
         continue;
       }
     }
