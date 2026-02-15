@@ -1,6 +1,19 @@
 ---
 name: xiaohongshu-recruiter
 description: 用于在小红书上发布高质量的 AI 相关岗位招聘帖子。包含自动生成极客风格的招聘封面图和详情图，并提供自动化发布脚本。当用户需要发布招聘信息、寻找 Agent 设计师或其他 AI 领域人才时使用。
+dependencies:
+  - type: bin
+    name: node
+    install: 'brew install node'
+  - type: npm
+    name: canvas
+    install: 'npm install -g canvas'
+  - type: bin
+    name: python3
+    install: 'brew install python3'
+  - type: python
+    name: playwright
+    install: 'pip install playwright && playwright install chromium'
 ---
 
 # Xiaohongshu Recruiter (小红书招聘助手)

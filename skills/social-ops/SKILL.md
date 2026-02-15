@@ -1,6 +1,13 @@
 ---
 name: social-ops
 description: Full social media operations — scan, post, reply, digest, track across X, Reddit, HN, and GitHub. Uses self-hosted API scripts (no third-party MCP) with dry-run safety. Use when user asks to check social media, post content, reply to comments, track repos, or generate engagement reports.
+dependencies:
+  - type: npm
+    name: tsx
+    install: 'npm install -g tsx'
+  - type: bin
+    name: gh
+    install: 'brew install gh'
 ---
 
 # Social Media Operations Skill
