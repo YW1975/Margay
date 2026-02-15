@@ -158,6 +158,18 @@ export type IMessageToolGroup = IMessage<
             toolDisplayName: string;
             serverName: string;
           }
+        >
+      | IMessageToolGroupConfirmationDetailsBase<
+          'ask_user',
+          {
+            questions: Array<{ question: string; header?: string }>;
+          }
+        >
+      | IMessageToolGroupConfirmationDetailsBase<
+          'exit_plan_mode',
+          {
+            planPath: string;
+          }
         >;
   }>
 >;

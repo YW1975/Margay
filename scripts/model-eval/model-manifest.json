@@ -1,0 +1,146 @@
+{
+  "version": "3.0",
+  "resolvedAt": "2026-02-14T19:25:36.463Z",
+  "models": [
+    {
+      "provider": "OpenAI-Chat",
+      "primaryModel": "gpt-5.2",
+      "fallbackModel": "gpt-4.1",
+      "mode": "openai-api",
+      "baseUrl": "https://api.openai.com/v1",
+      "keyName": "openai",
+      "status": "locked",
+      "resolvedModel": "gpt-5.2"
+    },
+    {
+      "provider": "OpenAI-Mini",
+      "primaryModel": "gpt-4.1-mini",
+      "fallbackModel": "gpt-4.1-nano",
+      "mode": "openai-api",
+      "baseUrl": "https://api.openai.com/v1",
+      "keyName": "openai",
+      "status": "locked",
+      "resolvedModel": "gpt-4.1-mini"
+    },
+    {
+      "provider": "Gemini-Pro",
+      "primaryModel": "gemini-3-pro",
+      "fallbackModel": "gemini-2.5-pro",
+      "mode": "gemini-engine",
+      "baseUrl": "",
+      "keyName": "gemini",
+      "status": "fallback",
+      "resolvedModel": "gemini-2.5-pro"
+    },
+    {
+      "provider": "Gemini-Flash",
+      "primaryModel": "gemini-3-flash",
+      "fallbackModel": "gemini-2.5-flash",
+      "mode": "gemini-engine",
+      "baseUrl": "",
+      "keyName": "gemini",
+      "status": "fallback",
+      "resolvedModel": "gemini-2.5-flash"
+    },
+    {
+      "provider": "Claude-Opus",
+      "primaryModel": "claude-opus-4-6",
+      "fallbackModel": "claude-opus-4-5",
+      "mode": "anthropic-api",
+      "baseUrl": "https://api.anthropic.com",
+      "keyName": "anthropic",
+      "status": "locked",
+      "resolvedModel": "claude-opus-4-6"
+    },
+    {
+      "provider": "Claude-Sonnet",
+      "primaryModel": "claude-sonnet-4-5-20250929",
+      "fallbackModel": "claude-sonnet-4-20250514",
+      "mode": "anthropic-api",
+      "baseUrl": "https://api.anthropic.com",
+      "keyName": "anthropic",
+      "status": "locked",
+      "resolvedModel": "claude-sonnet-4-5-20250929"
+    },
+    {
+      "provider": "DeepSeek-Chat",
+      "primaryModel": "deepseek-chat",
+      "fallbackModel": null,
+      "mode": "openai-api",
+      "baseUrl": "https://api.deepseek.com",
+      "keyName": "deepseek",
+      "status": "locked",
+      "resolvedModel": "deepseek-chat"
+    },
+    {
+      "provider": "DeepSeek-Coder",
+      "primaryModel": "deepseek-coder",
+      "fallbackModel": null,
+      "mode": "openai-api",
+      "baseUrl": "https://api.deepseek.com",
+      "keyName": "deepseek",
+      "status": "locked",
+      "resolvedModel": "deepseek-coder"
+    },
+    {
+      "provider": "MiniMax",
+      "primaryModel": "MiniMax-M1",
+      "fallbackModel": null,
+      "mode": "openai-api",
+      "baseUrl": "https://api.minimax.chat/v1",
+      "keyName": "minimax",
+      "status": "locked",
+      "resolvedModel": "MiniMax-M1"
+    },
+    {
+      "provider": "Qwen-Chat",
+      "primaryModel": "qwen/qwen3-max-thinking",
+      "fallbackModel": "qwen/qwen3-max",
+      "mode": "openai-api",
+      "baseUrl": "https://openrouter.ai/api/v1",
+      "keyName": "openrouter",
+      "status": "locked",
+      "resolvedModel": "qwen/qwen3-max-thinking"
+    },
+    {
+      "provider": "Qwen-Coder",
+      "primaryModel": "qwen/qwen3-coder",
+      "fallbackModel": "qwen/qwen3-coder-next",
+      "mode": "openai-api",
+      "baseUrl": "https://openrouter.ai/api/v1",
+      "keyName": "openrouter",
+      "status": "locked",
+      "resolvedModel": "qwen/qwen3-coder"
+    },
+    {
+      "provider": "Zhipu-GLM",
+      "primaryModel": "z-ai/glm-5",
+      "fallbackModel": null,
+      "mode": "openai-api",
+      "baseUrl": "https://openrouter.ai/api/v1",
+      "keyName": "openrouter",
+      "status": "locked",
+      "resolvedModel": "z-ai/glm-5"
+    },
+    {
+      "provider": "Kimi",
+      "primaryModel": "moonshotai/kimi-k2.5",
+      "fallbackModel": null,
+      "mode": "openai-api",
+      "baseUrl": "https://openrouter.ai/api/v1",
+      "keyName": "openrouter",
+      "status": "locked",
+      "resolvedModel": "moonshotai/kimi-k2.5"
+    },
+    {
+      "provider": "Baidu-ERNIE",
+      "primaryModel": "baidu/ernie-4.5-300b-a47b",
+      "fallbackModel": null,
+      "mode": "openai-api",
+      "baseUrl": "https://openrouter.ai/api/v1",
+      "keyName": "openrouter",
+      "status": "locked",
+      "resolvedModel": "baidu/ernie-4.5-300b-a47b"
+    }
+  ]
+}

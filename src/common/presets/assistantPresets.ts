@@ -237,26 +237,26 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
     },
   },
   {
-    id: 'social-media-monitor',
+    id: 'social-media-ops',
     avatar: '📡',
     presetAgentType: 'gemini',
-    resourceDir: 'assistant/social-media-monitor',
+    resourceDir: 'assistant/social-media-ops',
     ruleFiles: {
-      'en-US': 'social-media-monitor.md',
-      'zh-CN': 'social-media-monitor.zh-CN.md',
+      'en-US': 'social-media-ops.md',
+      'zh-CN': 'social-media-ops.zh-CN.md',
     },
-    defaultEnabledSkills: ['social-monitor', 'cron'],
+    defaultEnabledSkills: ['social-ops', 'cron', 'shell-bg'],
     nameI18n: {
-      'en-US': 'Social Media Monitor',
-      'zh-CN': '社交媒体监控',
+      'en-US': 'Social Media Ops',
+      'zh-CN': '社交媒体运营',
     },
     descriptionI18n: {
-      'en-US': 'Track engagement on your posts across X, HN, and Reddit. Auto-reply, generate digests, schedule monitoring.',
-      'zh-CN': '跟踪你在 X、HN、Reddit 上的帖子反馈，自动回帖、生成摘要、定时监控。',
+      'en-US': 'Full social media operations — scan, post, reply, digest across X, Reddit, HN, and GitHub. Dry-run safety for all writes.',
+      'zh-CN': '全功能社媒运营 — 扫描、发帖、回复、摘要，覆盖 X、Reddit、HN、GitHub。写操作 dry-run 安全机制。',
     },
     promptsI18n: {
-      'en-US': ['Scan my recent X posts for replies', 'Check comments on my HN submission', 'Generate a weekly social media digest', 'Set up daily monitoring at 9 AM'],
-      'zh-CN': ['扫描我最近的推文回复', '查看我 HN 提交的评论', '生成本周社交媒体摘要', '设置每天早上 9 点自动监控'],
+      'en-US': ['Scan my social media across all platforms', 'Post an update to X', 'Generate a weekly social media digest', 'Track our GitHub repo activity'],
+      'zh-CN': ['扫描所有平台的社媒互动', '在 X 上发一条更新', '生成本周社交媒体摘要', '追踪我们的 GitHub 仓库动态'],
     },
   },
   {
