@@ -14,6 +14,7 @@ import { app } from 'electron';
 import { ipcBridge } from '../../common';
 import { getSystemDir, getAssistantsDir } from '../initStorage';
 import { detectEngineNativeSkills, detectGlobalSkills } from '../task/SkillDistributor';
+import { checkAllSkillDependencies } from '../skills/SkillDependencyChecker';
 import { readDirectoryRecursive } from '../utils';
 
 // ============================================================================
@@ -958,5 +959,29 @@ export function initFsBridge(): void {
         msg: error instanceof Error ? error.message : 'Detection failed',
       });
     }
+  });
+
+  // 检查所有 skill 的依赖状态 / Check dependency status for all installed skills
+  ipcBridge.fs.checkSkillDependencies.provider(async () => {
+    try {
+      const userSkillsDir = getUserSkillsDir();
+      const reports = await checkAllSkillDependencies(userSkillsDir);
+      return { success: true, data: reports };
+    } catch (error) {
+      return {
+        success: false,
+        msg: error instanceof Error ? error.message : 'Dependency check failed',
+      };
+    }
+  });
+
+  // 安装单个 skill 依赖 / Open terminal to install a skill dependency
+  ipcBridge.fs.installSkillDependency.provider(async ({ install }) => {
+    if (!install || typeof install !== 'string') {
+      return { success: false, msg: 'No install command provided' };
+    }
+    // We don't execute the command directly — instead we return it for
+    // the frontend to pass to shell.openInTerminal
+    return { success: true, msg: install };
   });
 }

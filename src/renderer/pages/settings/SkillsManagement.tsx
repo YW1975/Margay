@@ -5,9 +5,9 @@
  */
 
 import { ipcBridge } from '@/common';
-import { Button, Collapse, Input, Message, Modal, Typography } from '@arco-design/web-react';
-import { FolderOpen, Plus } from '@icon-park/react';
-import React, { useCallback, useEffect, useState } from 'react';
+import { Button, Collapse, Input, Message, Modal, Popover, Tooltip, Typography } from '@arco-design/web-react';
+import { CheckOne, CloseOne, FolderOpen, Loading, Plus, Refresh } from '@icon-park/react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 interface SkillInfo {
@@ -31,11 +31,24 @@ interface GlobalSkill {
   hasSkillMd: boolean;
 }
 
+interface DependencyCheck {
+  type: 'bin' | 'npm' | 'python' | 'mcp';
+  name: string;
+  status: 'installed' | 'missing' | 'error';
+  install: string;
+  version?: string;
+  error?: string;
+}
+
+interface SkillDepReport {
+  skillName: string;
+  dependencies: DependencyCheck[];
+  allSatisfied: boolean;
+  requiredMissing: number;
+}
+
 /**
- * Global Skills Management — browse installed skills and import new ones.
- * This is a standalone page (separate from per-assistant skill selection in AssistantManagement).
- * - Skills page = global skill library (install/browse)
- * - Assistant edit = per-assistant enable/disable from global library
+ * Global Skills Management — browse installed skills, check dependencies, and import new ones.
  */
 const SkillsManagement: React.FC = () => {
   const { t } = useTranslation();
@@ -47,6 +60,17 @@ const SkillsManagement: React.FC = () => {
   const [engineNativeSkills, setEngineNativeSkills] = useState<EngineNativeSkill[]>([]);
   const [globalSkills, setGlobalSkills] = useState<GlobalSkill[]>([]);
   const [importingSkill, setImportingSkill] = useState<string | null>(null);
+  const [depReports, setDepReports] = useState<SkillDepReport[]>([]);
+  const [depChecking, setDepChecking] = useState(false);
+
+  // Build a map: skillName -> SkillDepReport
+  const depMap = useMemo(() => {
+    const map = new Map<string, SkillDepReport>();
+    for (const r of depReports) {
+      map.set(r.skillName, r);
+    }
+    return map;
+  }, [depReports]);
 
   const loadSkills = useCallback(async () => {
     try {
@@ -59,7 +83,6 @@ const SkillsManagement: React.FC = () => {
     }
   }, []);
 
-  // Load engine-native skills from the default workspace
   const loadEngineNativeSkills = useCallback(async () => {
     try {
       const sysInfo = await ipcBridge.application.systemInfo.invoke();
@@ -73,7 +96,6 @@ const SkillsManagement: React.FC = () => {
     }
   }, []);
 
-  // Load global skills from home directory engine paths
   const loadGlobalSkills = useCallback(async () => {
     try {
       const result = await ipcBridge.fs.detectGlobalSkills.invoke();
@@ -85,11 +107,26 @@ const SkillsManagement: React.FC = () => {
     }
   }, []);
 
+  const checkDependencies = useCallback(async () => {
+    setDepChecking(true);
+    try {
+      const result = await ipcBridge.fs.checkSkillDependencies.invoke();
+      if (result.success && result.data) {
+        setDepReports(result.data);
+      }
+    } catch (error) {
+      console.error('Failed to check dependencies:', error);
+    } finally {
+      setDepChecking(false);
+    }
+  }, []);
+
   useEffect(() => {
     void loadSkills();
     void loadEngineNativeSkills();
     void loadGlobalSkills();
-  }, [loadSkills, loadEngineNativeSkills, loadGlobalSkills]);
+    void checkDependencies();
+  }, [loadSkills, loadEngineNativeSkills, loadGlobalSkills, checkDependencies]);
 
   // Detect common skill paths when import modal opens
   useEffect(() => {
@@ -140,7 +177,6 @@ const SkillsManagement: React.FC = () => {
       let skippedCount = 0;
 
       for (const skill of allFoundSkills) {
-        // Check if already installed
         const exists = availableSkills.some((s) => s.name === skill.name);
         if (exists) {
           skippedCount++;
@@ -157,6 +193,7 @@ const SkillsManagement: React.FC = () => {
         const skippedText = skippedCount > 0 ? ` (${skippedCount} ${t('settings.skillsSkipped', { defaultValue: 'already installed' })})` : '';
         Message.success(`${importedCount} ${t('settings.skillsImported', { defaultValue: 'skills imported' })}${skippedText}`);
         void loadSkills();
+        void checkDependencies();
       } else if (skippedCount > 0) {
         Message.warning(t('settings.allSkillsExist', { defaultValue: 'All found skills already exist' }));
       }
@@ -167,7 +204,7 @@ const SkillsManagement: React.FC = () => {
       Message.error(t('settings.skillScanFailed', { defaultValue: 'Failed to scan skills' }));
       setImportModalVisible(false);
     }
-  }, [skillPath, availableSkills, t, loadSkills]);
+  }, [skillPath, availableSkills, t, loadSkills, checkDependencies]);
 
   const handleImportEngineNative = useCallback(
     async (skill: EngineNativeSkill) => {
@@ -178,6 +215,7 @@ const SkillsManagement: React.FC = () => {
           Message.success(t('settings.skillImported', { defaultValue: 'Skill "{name}" imported successfully', name: skill.name }));
           void loadSkills();
           void loadEngineNativeSkills();
+          void checkDependencies();
         } else {
           Message.error(result.msg || t('settings.skillImportFailed', { defaultValue: 'Failed to import skill' }));
         }
@@ -188,11 +226,124 @@ const SkillsManagement: React.FC = () => {
         setImportingSkill(null);
       }
     },
-    [t, loadSkills, loadEngineNativeSkills]
+    [t, loadSkills, loadEngineNativeSkills, checkDependencies]
+  );
+
+  const handleInstallDep = useCallback(
+    async (dep: DependencyCheck) => {
+      if (!dep.install) return;
+      try {
+        await ipcBridge.shell.openInTerminal.invoke({ command: dep.install });
+        Message.info(t('settings.depInstallOpened', { defaultValue: 'Install command opened in terminal. Re-check after installation.' }));
+      } catch {
+        // Fallback: copy to clipboard
+        try {
+          await navigator.clipboard.writeText(dep.install);
+          Message.info(t('settings.depInstallCopied', { defaultValue: 'Install command copied to clipboard: {cmd}', cmd: dep.install }));
+        } catch {
+          Message.info(dep.install);
+        }
+      }
+    },
+    [t]
   );
 
   const builtinSkills = availableSkills.filter((s) => !s.isCustom);
   const customSkills = availableSkills.filter((s) => s.isCustom);
+
+  // Render dependency status for a skill
+  const renderDepStatus = (skillName: string) => {
+    const report = depMap.get(skillName);
+    if (!report || report.dependencies.length === 0) return null;
+
+    if (report.allSatisfied) {
+      return (
+        <Tooltip content={t('settings.allDepsReady', { defaultValue: 'All dependencies ready' })}>
+          <span className='inline-flex items-center gap-2px text-10px px-4px py-1px bg-green-50 text-green-600 rounded border border-green-200' style={{ fontSize: '9px', fontWeight: 'bold' }}>
+            <CheckOne size={10} fill='#16a34a' />
+            Ready
+          </span>
+        </Tooltip>
+      );
+    }
+
+    const missingDeps = report.dependencies.filter((d) => d.status !== 'installed');
+
+    return (
+      <Popover
+        trigger='click'
+        position='bottom'
+        content={
+          <div className='p-8px space-y-6px max-w-[360px]'>
+            <div className='text-12px font-medium mb-4px'>{t('settings.missingDeps', { defaultValue: 'Missing Dependencies' })}</div>
+            {missingDeps.map((dep) => (
+              <div key={`${dep.type}-${dep.name}`} className='flex items-center justify-between gap-8px p-4px bg-fill-1 rounded-4px'>
+                <div className='flex-1 min-w-0'>
+                  <div className='flex items-center gap-4px'>
+                    <span className='text-11px font-medium'>{dep.name}</span>
+                    <span className='text-9px px-3px py-0.5 bg-gray-100 text-gray-500 rounded uppercase'>{dep.type}</span>
+                  </div>
+                  {dep.error && <div className='text-10px text-orange-500 mt-1px'>{dep.error}</div>}
+                </div>
+                {dep.install && (
+                  <Button size='mini' type='outline' status='warning' onClick={() => void handleInstallDep(dep)} className='shrink-0'>
+                    {t('settings.install', { defaultValue: 'Install' })}
+                  </Button>
+                )}
+              </div>
+            ))}
+            <div className='text-10px text-t-tertiary mt-4px'>{t('settings.depInstallHint', { defaultValue: 'Click Install to open in terminal, then re-check.' })}</div>
+          </div>
+        }
+      >
+        <span className='inline-flex items-center gap-2px text-10px px-4px py-1px bg-amber-50 text-amber-600 rounded border border-amber-200 cursor-pointer hover:bg-amber-100' style={{ fontSize: '9px', fontWeight: 'bold' }}>
+          <CloseOne size={10} fill='#d97706' />
+          {missingDeps.length} {t('settings.missing', { defaultValue: 'missing' })}
+        </span>
+      </Popover>
+    );
+  };
+
+  // Render inline dependency list (for expanded view)
+  const renderDepList = (skillName: string) => {
+    const report = depMap.get(skillName);
+    if (!report || report.dependencies.length === 0) return null;
+
+    return (
+      <div className='flex flex-wrap gap-4px mt-4px'>
+        {report.dependencies.map((dep) => {
+          const isOk = dep.status === 'installed';
+          return (
+            <Tooltip key={`${dep.type}-${dep.name}`} content={isOk ? `${dep.name}${dep.version ? ` v${dep.version}` : ''} - installed` : `${dep.name} - ${dep.install || 'not installed'}`}>
+              <span className={`inline-flex items-center gap-2px text-10px px-3px py-0.5 rounded border ${isOk ? 'bg-green-50/50 text-green-600 border-green-200/60' : 'bg-red-50/50 text-red-500 border-red-200/60 cursor-pointer hover:bg-red-100/50'}`} style={{ fontSize: '9px' }} onClick={isOk ? undefined : () => void handleInstallDep(dep)}>
+                {isOk ? <CheckOne size={9} fill='#16a34a' /> : <CloseOne size={9} fill='#ef4444' />}
+                {dep.type}:{dep.name}
+              </span>
+            </Tooltip>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // Render a single skill row
+  const renderSkillRow = (skill: SkillInfo, showCustomBadge = false) => (
+    <div key={skill.name} className='flex items-start gap-8px p-8px hover:bg-fill-1 rounded-4px'>
+      <div className='flex-1 min-w-0'>
+        <div className='flex items-center gap-4px flex-wrap'>
+          <div className='text-13px font-medium text-t-primary'>{skill.name}</div>
+          {showCustomBadge && (
+            <span className='text-10px px-4px py-1px bg-orange-100 text-orange-600 rounded border border-orange-200 uppercase' style={{ fontSize: '9px', fontWeight: 'bold' }}>
+              Custom
+            </span>
+          )}
+          {renderDepStatus(skill.name)}
+        </div>
+        {skill.description && <div className='text-12px text-t-secondary mt-2px line-clamp-2'>{skill.description}</div>}
+        {renderDepList(skill.name)}
+      </div>
+    </div>
+  );
 
   return (
     <div className='flex flex-col gap-16px'>
@@ -203,9 +354,14 @@ const SkillsManagement: React.FC = () => {
           </Typography.Title>
           <Typography.Text className='text-12px !color-#86909C'>{t('settings.skillsDescription', { defaultValue: 'Manage globally installed skills. Per-assistant skill selection is configured in Assistants settings.' })}</Typography.Text>
         </div>
-        <Button type='primary' icon={<Plus size={14} />} onClick={() => setImportModalVisible(true)} className='rounded-[100px]'>
-          {t('settings.importSkills', { defaultValue: 'Import Skills' })}
-        </Button>
+        <div className='flex items-center gap-8px'>
+          <Tooltip content={t('settings.recheckDeps', { defaultValue: 'Re-check dependencies' })}>
+            <Button type='secondary' icon={depChecking ? <Loading size={14} /> : <Refresh size={14} />} onClick={() => void checkDependencies()} disabled={depChecking} className='rounded-[100px]' />
+          </Tooltip>
+          <Button type='primary' icon={<Plus size={14} />} onClick={() => setImportModalVisible(true)} className='rounded-[100px]'>
+            {t('settings.importSkills', { defaultValue: 'Import Skills' })}
+          </Button>
+        </div>
       </div>
 
       {loading ? (
@@ -216,36 +372,13 @@ const SkillsManagement: React.FC = () => {
         <Collapse defaultActiveKey={['builtin-skills', 'custom-skills']}>
           {builtinSkills.length > 0 && (
             <Collapse.Item header={<span className='text-13px font-medium'>{t('settings.builtinSkills', { defaultValue: 'Builtin Skills' })}</span>} name='builtin-skills' extra={<span className='text-12px text-t-secondary'>{builtinSkills.length}</span>}>
-              <div className='space-y-4px'>
-                {builtinSkills.map((skill) => (
-                  <div key={skill.name} className='flex items-start gap-8px p-8px hover:bg-fill-1 rounded-4px'>
-                    <div className='flex-1 min-w-0'>
-                      <div className='text-13px font-medium text-t-primary'>{skill.name}</div>
-                      {skill.description && <div className='text-12px text-t-secondary mt-2px line-clamp-2'>{skill.description}</div>}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <div className='space-y-4px'>{builtinSkills.map((skill) => renderSkillRow(skill))}</div>
             </Collapse.Item>
           )}
 
           {customSkills.length > 0 && (
             <Collapse.Item header={<span className='text-13px font-medium'>{t('settings.customSkills', { defaultValue: 'Imported Skills (Library)' })}</span>} name='custom-skills' extra={<span className='text-12px text-t-secondary'>{customSkills.length}</span>}>
-              <div className='space-y-4px'>
-                {customSkills.map((skill) => (
-                  <div key={skill.name} className='flex items-start gap-8px p-8px hover:bg-fill-1 rounded-4px'>
-                    <div className='flex-1 min-w-0'>
-                      <div className='flex items-center gap-4px'>
-                        <div className='text-13px font-medium text-t-primary'>{skill.name}</div>
-                        <span className='text-10px px-4px py-1px bg-orange-100 text-orange-600 rounded border border-orange-200 uppercase' style={{ fontSize: '9px', fontWeight: 'bold' }}>
-                          Custom
-                        </span>
-                      </div>
-                      {skill.description && <div className='text-12px text-t-secondary mt-2px line-clamp-2'>{skill.description}</div>}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <div className='space-y-4px'>{customSkills.map((skill) => renderSkillRow(skill, true))}</div>
             </Collapse.Item>
           )}
         </Collapse>
