@@ -93,7 +93,7 @@ class CodexAgentManager extends BaseAgentManager<CodexAgentManagerData> implemen
       // Distribute Margay skills to Codex discovery dir before agent starts
       // 在 agent 启动前将 Margay skills 分发到 Codex 发现目录
       const codexWorkspace = data.workspace || process.cwd();
-      distributeForCodex(codexWorkspace, data.enabledSkills);
+      distributeForCodex(codexWorkspace);
 
       this.agent = new CodexAgent({
         id: data.conversation_id,
@@ -206,6 +206,7 @@ class CodexAgentManager extends BaseAgentManager<CodexAgentManagerData> implemen
           presetContext: this.options.presetContext,
           workspace: this.options.workspace,
           additionalDirs: this.options.additionalDirs,
+          assistantId: this.options.presetAssistantId,
         });
 
         const result = await this.agent.newSession(this.workspace, processedContent);

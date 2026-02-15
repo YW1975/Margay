@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import path from 'path';
 import { channelEventBus } from '@/channels/agent/ChannelEventBus';
 import { ipcBridge } from '@/common';
 import type { IMessageToolGroup, TMessage } from '@/common/chatLib';
@@ -11,7 +12,7 @@ import { transformMessage } from '@/common/chatLib';
 import type { IResponseMessage } from '@/common/ipcBridge';
 import type { IMcpServer, TProviderWithModel } from '@/common/storage';
 import { ProcessConfig, getSkillsDir } from '@/process/initStorage';
-import { computeGeminiDisabledSkills, distributeForGemini } from './SkillDistributor';
+import { distributeForGemini } from './SkillDistributor';
 import { uuid } from '@/common/utils';
 import { getOauthInfoWithCache } from '@/agent/gemini/auth-compat';
 import { GeminiApprovalStore } from '../../agent/gemini/GeminiApprovalStore';
@@ -45,12 +46,14 @@ export class GeminiAgentManager extends BaseAgentManager<
     GOOGLE_CLOUD_PROJECT?: string;
     /** 内置 skills 目录路径 / Builtin skills directory path */
     skillsDir?: string;
-    /** 启用的 skills 列表 / Enabled skills list */
-    enabledSkills?: string[];
-    /** 禁用的 skills 列表（传给 @margay/agent-core 原生 SkillManager）/ Disabled skills passed to native SkillManager */
-    disabledSkills?: string[];
+    /** 工作空间级 skills 目录路径 / Workspace-specific skills directory path */
+    workspaceSkillsDir?: string;
     /** Yolo mode: auto-approve all tool calls / 自动允许模式 */
     yoloMode?: boolean;
+    /** L2 助手跨会话记忆 / L2 assistant cross-session memory */
+    assistantMemory?: string;
+    /** L3 工作空间共享记忆 / L3 workspace shared memory */
+    workspaceMemory?: string;
   },
   string
 > {
@@ -58,19 +61,20 @@ export class GeminiAgentManager extends BaseAgentManager<
   model: TProviderWithModel;
   contextFileName?: string;
   presetRules?: string;
+  presetAssistantId?: string;
   contextContent?: string;
-  enabledSkills?: string[];
   private bootstrap: Promise<void>;
 
   /** Session-level approval store for "always allow" memory */
   readonly approvalStore = new GeminiApprovalStore();
 
-  /** Load persisted approvals from database into memory */
+  /** Load persisted approvals from database into memory (global + workspace-scoped) */
   private loadPersistedApprovals(): void {
     import('@process/database')
       .then(({ getDatabase }) => {
         const db = getDatabase();
-        const result = db.getGeminiApprovals();
+        // Load global approvals + approvals scoped to this workspace
+        const result = db.getGeminiApprovals(this.workspace);
         if (!result.success) {
           console.warn('[GeminiAgent] Failed to load persisted approvals from DB:', result.error);
           return;
@@ -101,10 +105,10 @@ export class GeminiAgentManager extends BaseAgentManager<
       // 系统规则 / System rules
       presetRules?: string;
       contextContent?: string; // 向后兼容 / Backward compatible
-      /** 启用的 skills 列表 / Enabled skills list */
-      enabledSkills?: string[];
       /** Force yolo mode (for cron jobs) / 强制 yolo 模式（用于定时任务） */
       yoloMode?: boolean;
+      /** 预设助手 ID（用于 L2 记忆查找）/ Preset assistant ID (for L2 memory lookup) */
+      presetAssistantId?: string;
     },
     model: TProviderWithModel
   ) {
@@ -114,7 +118,7 @@ export class GeminiAgentManager extends BaseAgentManager<
     this.model = model;
     this.contextFileName = data.contextFileName;
     this.presetRules = data.presetRules;
-    this.enabledSkills = data.enabledSkills;
+    this.presetAssistantId = data.presetAssistantId;
     this.forceYoloMode = data.yoloMode;
     // 向后兼容 / Backward compatible
     this.contextContent = data.contextContent || data.presetRules;
@@ -139,15 +143,74 @@ export class GeminiAgentManager extends BaseAgentManager<
 
         // Distribute Margay skills to Gemini workspace discovery dir (bootstrap-only)
         // 在 bootstrap 时将 Margay skills 分发到 Gemini 工作空间发现目录
-        distributeForGemini(this.workspace, this.enabledSkills);
-
-        // Convert enabledSkills (preset whitelist) to disabledSkills (@margay/agent-core native blacklist)
-        // 将 enabledSkills（预设白名单）转换为 disabledSkills（@margay/agent-core 原生黑名单）
-        const disabledSkills = computeGeminiDisabledSkills(this.enabledSkills);
+        distributeForGemini(this.workspace);
 
         // Determine yoloMode: forceYoloMode (cron jobs) takes priority over config setting
         // 确定 yoloMode：forceYoloMode（定时任务）优先于配置设置
         const yoloMode = this.forceYoloMode ?? config?.yoloMode ?? false;
+
+        // Workspace skills directory for Gemini to load workspace-specific skills
+        const workspaceSkillsDir = path.join(this.workspace, '.margay', 'skills');
+
+        // Load L2/L3 organizational memory for Gemini userMemory injection
+        // 加载 L2/L3 组织记忆用于 Gemini userMemory 注入
+        let assistantMemory: string | undefined;
+        let workspaceMemory: string | undefined;
+        try {
+          const { getMemoryDir } = await import('../initStorage');
+          const { MemoryFileManager } = await import('../services/memory/MemoryFileManager');
+          const memoryDir = getMemoryDir();
+          const fileManager = new MemoryFileManager(memoryDir);
+          // Use preset assistant ID as stable identity for L2 memory lookup
+          // 使用预设助手 ID 作为稳定的 L2 记忆查找键
+          const assistantId = this.presetAssistantId || this.contextFileName;
+          if (assistantId) {
+            const content = fileManager.readAssistantMemory(assistantId);
+            if (content?.trim()) {
+              assistantMemory = content;
+              // Lazy index into SQLite (best-effort)
+              try {
+                const { MemoryStore } = await import('../services/memory/MemoryStore');
+                const result = MemoryStore.upsert({
+                  id: `assistant:${assistantId}`,
+                  scope: 'assistant',
+                  ownerId: assistantId,
+                  category: 'summary',
+                  summary: content.trim().split('\n')[0]?.slice(0, 200) || '',
+                  filePath: fileManager.getAssistantMemoryPath(assistantId),
+                });
+                if (!result.success) {
+                  console.warn(`[GeminiAgentManager] Assistant memory indexing failed:`, result.error);
+                }
+              } catch (error) {
+                console.warn(`[GeminiAgentManager] Assistant memory indexing error:`, error);
+              }
+            }
+          }
+          const wsContent = fileManager.readWorkspaceMemory(this.workspace);
+          if (wsContent?.trim()) {
+            workspaceMemory = wsContent;
+            try {
+              const { MemoryStore } = await import('../services/memory/MemoryStore');
+              const hash = MemoryFileManager.computeWorkspaceHash(this.workspace);
+              const result = MemoryStore.upsert({
+                id: `workspace:${hash}`,
+                scope: 'workspace',
+                ownerId: hash,
+                category: 'summary',
+                summary: wsContent.trim().split('\n')[0]?.slice(0, 200) || '',
+                filePath: fileManager.getWorkspaceMemoryPath(this.workspace),
+              });
+              if (!result.success) {
+                console.warn(`[GeminiAgentManager] Workspace memory indexing failed:`, result.error);
+              }
+            } catch (error) {
+              console.warn(`[GeminiAgentManager] Workspace memory indexing error:`, error);
+            }
+          }
+        } catch (error) {
+          console.warn('[GeminiAgentManager] Failed to load memory:', error);
+        }
 
         return this.start({
           ...config,
@@ -163,11 +226,13 @@ export class GeminiAgentManager extends BaseAgentManager<
           // Skills discovered natively by @margay/agent-core SkillManager
           // Skills 由 @margay/agent-core 原生 SkillManager 发现
           skillsDir: getSkillsDir(),
-          // Disabled skills list for native SkillManager filtering
-          // 禁用的 skills 列表，由原生 SkillManager 过滤
-          disabledSkills,
+          // Workspace-specific skills directory (loaded alongside global skills)
+          workspaceSkillsDir,
           // Yolo mode: auto-approve all tool calls / 自动允许模式
           yoloMode,
+          // L2/L3 organizational memory
+          assistantMemory,
+          workspaceMemory,
         });
       })
       .then(async () => {
@@ -271,6 +336,10 @@ export class GeminiAgentManager extends BaseAgentManager<
               label: t('messages.confirmation.yesAllowAlways'),
               value: ToolConfirmationOutcome.ProceedAlways,
             },
+            {
+              label: t('messages.confirmation.yesAllowWorkspace'),
+              value: ToolConfirmationOutcome.ProceedAlwaysAndSave,
+            },
             { label: t('messages.confirmation.no'), value: ToolConfirmationOutcome.Cancel }
           );
         }
@@ -288,6 +357,10 @@ export class GeminiAgentManager extends BaseAgentManager<
               label: t('messages.confirmation.yesAllowAlways'),
               value: ToolConfirmationOutcome.ProceedAlways,
             },
+            {
+              label: t('messages.confirmation.yesAllowWorkspace'),
+              value: ToolConfirmationOutcome.ProceedAlwaysAndSave,
+            },
             { label: t('messages.confirmation.no'), value: ToolConfirmationOutcome.Cancel }
           );
         }
@@ -304,6 +377,10 @@ export class GeminiAgentManager extends BaseAgentManager<
             {
               label: t('messages.confirmation.yesAllowAlways'),
               value: ToolConfirmationOutcome.ProceedAlways,
+            },
+            {
+              label: t('messages.confirmation.yesAllowWorkspace'),
+              value: ToolConfirmationOutcome.ProceedAlwaysAndSave,
             },
             { label: t('messages.confirmation.no'), value: ToolConfirmationOutcome.Cancel }
           );
@@ -550,30 +627,40 @@ export class GeminiAgentManager extends BaseAgentManager<
   confirm(id: string, callId: string, data: string) {
     // Store "always allow" decision before removing confirmation from cache
     // 在从缓存中移除确认之前，存储 "always allow" 决策
-    if (data === ToolConfirmationOutcome.ProceedAlways) {
+    if (data === ToolConfirmationOutcome.ProceedAlways || data === ToolConfirmationOutcome.ProceedAlwaysAndSave) {
       const confirmation = this.confirmations.find((c) => c.callId === callId);
       if (confirmation?.action) {
         const keys = GeminiApprovalStore.createKeysFromConfirmation(confirmation.action, confirmation.commandType);
-        this.approvalStore.approveAll(keys);
-        // Persist approvals to database for cross-session persistence
-        this.persistApprovals(keys);
+
+        if (data === ToolConfirmationOutcome.ProceedAlwaysAndSave) {
+          // Workspace-scoped: approve for this workspace only
+          this.approvalStore.approveForWorkspace(keys, this.workspace);
+          this.persistApprovals(keys, this.workspace);
+        } else {
+          // Global: approve for all workspaces (existing behavior)
+          this.approvalStore.approveAll(keys);
+          this.persistApprovals(keys);
+        }
       }
     }
 
-    super.confirm(id, callId, data);
+    // Send to worker as ProceedAlways (engine doesn't know about workspace scope)
+    const engineData = data === ToolConfirmationOutcome.ProceedAlwaysAndSave ? ToolConfirmationOutcome.ProceedAlways : data;
+
+    super.confirm(id, callId, engineData);
     // 发送确认到 worker，使用 callId 作为消息类型
     // Send confirmation to worker, using callId as message type
-    return this.postMessagePromise(callId, data);
+    return this.postMessagePromise(callId, engineData);
   }
 
-  /** Persist approval keys to database */
-  private persistApprovals(keys: Array<{ action: string; identifier?: string }>): void {
+  /** Persist approval keys to database with optional workspace scope */
+  private persistApprovals(keys: Array<{ action: string; identifier?: string }>, workspaceScope = ''): void {
     import('@process/database')
       .then(({ getDatabase }) => {
         const db = getDatabase();
         const failed: string[] = [];
         for (const key of keys) {
-          const result = db.saveGeminiApproval(key.action, key.identifier || '');
+          const result = db.saveGeminiApproval(key.action, key.identifier || '', workspaceScope);
           if (!result.success) {
             failed.push(`${key.action}:${key.identifier || ''}`);
           }

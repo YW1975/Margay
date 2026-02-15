@@ -246,7 +246,7 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
       // Distribute skills on every message so newly installed skills are picked up
       // 每次发消息前分发 skills，确保新安装的 skill 立即可见
       if (this.options.workspace && (this.options.backend === 'claude' || this.options.backend === 'custom')) {
-        distributeForClaude(this.options.workspace, this.options.enabledSkills);
+        distributeForClaude(this.options.workspace);
       }
       await this.initAgent(this.options);
       // Save user message to chat history ONLY after successful sending
@@ -263,6 +263,7 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
             presetContext: this.options.presetContext,
             workspace: this.options.workspace,
             additionalDirs: this.options.additionalDirs,
+            assistantId: this.options.customAgentId,
           });
         }
 

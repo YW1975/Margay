@@ -43,14 +43,95 @@ export interface FirstMessageConfig {
   workspace?: string;
   /** 附加可访问目录 / Additional accessible directories */
   additionalDirs?: string[];
+  /** 助手 ID（用于加载 L2 助手记忆） / Assistant ID (for loading L2 assistant memory) */
+  assistantId?: string;
 }
 
 /**
- * 为首次消息注入预设规则（不注入 skills — skills 通过 SkillDistributor 分发，引擎原生发现）
- * Inject preset rules for first message (no skill injection — skills distributed via SkillDistributor, discovered natively by engines)
+ * 加载组织记忆（L2 助手记忆 + L3 工作空间记忆）
+ * Load organizational memory (L2 assistant memory + L3 workspace memory)
+ */
+function loadMemorySections(assistantId?: string, workspace?: string): string[] {
+  const memorySections: string[] = [];
+
+  try {
+    // Lazy import to avoid circular dependencies — only used in main process
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { getMemoryDir } = require('../initStorage');
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { MemoryFileManager } = require('../services/memory/MemoryFileManager');
+    const memoryDir = getMemoryDir();
+    const fileManager = new MemoryFileManager(memoryDir);
+
+    // L2: Assistant memory
+    if (assistantId) {
+      const memoryPath = fileManager.getAssistantMemoryPath(assistantId);
+      const assistantMemory = fileManager.readAssistantMemory(assistantId);
+      if (assistantMemory.trim()) {
+        memorySections.push(`[Assistant Memory - Cross Session]\n${assistantMemory}`);
+        // Lazy index into SQLite (non-blocking, best-effort)
+        indexMemoryEntry('assistant', assistantId, assistantMemory, memoryPath);
+      }
+    }
+
+    // L3: Workspace memory
+    if (workspace) {
+      const memoryPath = fileManager.getWorkspaceMemoryPath(workspace);
+      const workspaceMemory = fileManager.readWorkspaceMemory(workspace);
+      if (workspaceMemory.trim()) {
+        memorySections.push(`[Workspace Context]\n${workspaceMemory}`);
+        const hash = MemoryFileManager.computeWorkspaceHash(workspace);
+        indexMemoryEntry('workspace', hash, workspaceMemory, memoryPath);
+      }
+    }
+  } catch (error) {
+    // Memory loading failure is non-fatal — continue without memory
+    console.warn('[agentUtils] Failed to load memory:', error);
+  }
+
+  return memorySections;
+}
+
+/**
+ * Best-effort lazy indexing of memory into SQLite.
+ * Non-blocking: errors are silently ignored since the file is the source of truth.
+ */
+function indexMemoryEntry(scope: 'assistant' | 'workspace', ownerId: string, content: string, filePath: string): void {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { MemoryStore } = require('../services/memory/MemoryStore');
+    // Use scope:ownerId as deterministic ID for idempotent upsert
+    const id = `${scope}:${ownerId}`;
+    const firstLine = content.trim().split('\n')[0]?.slice(0, 200) || '';
+    const result = MemoryStore.upsert({
+      id,
+      scope,
+      ownerId,
+      category: 'summary',
+      summary: firstLine,
+      filePath,
+    });
+    if (!result.success) {
+      console.warn(`[agentUtils] Memory indexing failed for ${scope}:${ownerId}:`, result.error);
+    }
+  } catch (error) {
+    console.warn(`[agentUtils] Memory indexing error for ${scope}:${ownerId}:`, error);
+  }
+}
+
+/**
+ * 为首次消息注入预设规则和记忆
+ * Inject preset rules and memory for first message
  *
  * 注意：使用直接前缀方式而非 XML 标签，以确保 Claude Code CLI 等外部 agent 能正确识别
  * Note: Use direct prefix instead of XML tags to ensure external agents like Claude Code CLI can recognize it
+ *
+ * Prompt structure:
+ *   [Assistant Rules]              — presetContext (existing)
+ *   [Assistant Memory]             — L2 cross-session memory (new)
+ *   [Workspace Context]            — L3 workspace memory (new)
+ *   [Workspace Access]             — additional directories (existing)
+ *   [User Request]                 — original content (existing)
  *
  * @param content - 原始消息内容 / Original message content
  * @param config - 首次消息配置 / First message configuration
@@ -62,6 +143,10 @@ export async function prepareFirstMessage(content: string, config: FirstMessageC
   if (config.presetContext) {
     sections.push(`[Assistant Rules - You MUST follow these instructions]\n${config.presetContext}`);
   }
+
+  // L2 + L3 memory injection
+  const memorySections = loadMemorySections(config.assistantId, config.workspace);
+  sections.push(...memorySections);
 
   // additionalDirs is already normalized by normalizeAdditionalDirs() at conversation creation time
   const additionalDirs = config.additionalDirs ?? [];
