@@ -836,6 +836,7 @@
       "allowMCPTool": "\"{{serverName}}\" sunucusundan \"{{toolName}}\" MCP aracının çalıştırılmasına izin ver?",
       "yesAllowOnce": "Evet, bir kez izin ver",
       "yesAllowAlways": "Evet, her zaman izin ver",
+      "yesAllowWorkspace": "Evet, bu çalışma alanında her zaman izin ver",
       "yesAlwaysAllowTool": "Evet, \"{{serverName}}\" sunucusundan \"{{toolName}}\" aracına her zaman izin ver",
       "yesAlwaysAllowServer": "Evet, \"{{serverName}}\" sunucusundaki tüm araçlara her zaman izin ver",
       "no": "Hayır (esc)"

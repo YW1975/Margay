@@ -897,6 +897,7 @@
       "allowMCPTool": "Allow execution of MCP tool \"{{toolName}}\" from server \"{{serverName}}\"?",
       "yesAllowOnce": "Yes, allow once",
       "yesAllowAlways": "Yes, allow always",
+      "yesAllowWorkspace": "Yes, allow for this workspace",
       "yesAlwaysAllowTool": "Yes, always allow tool \"{{toolName}}\" from server \"{{serverName}}\"",
       "yesAlwaysAllowServer": "Yes, always allow all tools from server \"{{serverName}}\"",
       "no": "No (esc)"

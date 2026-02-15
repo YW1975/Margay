@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { mkdirSync as _mkdirSync, existsSync, readdirSync, readFileSync, cpSync, rmSync, writeFileSync } from 'fs';
+import { mkdirSync as _mkdirSync, existsSync, readdirSync, readFileSync, cpSync, rmSync, writeFileSync, statSync } from 'fs';
 import fs from 'fs/promises';
 import path from 'path';
 import { app } from 'electron';
@@ -29,6 +29,7 @@ const STORAGE_PATH = {
   env: '.margay-env',
   assistants: 'assistants',
   skills: 'skills',
+  memory: 'memory',
 };
 
 const getHomePage = getConfigPath;
@@ -341,6 +342,14 @@ const getSkillsDir = () => {
 };
 
 /**
+ * 获取记忆存储目录路径
+ * Get memory storage directory path
+ */
+const getMemoryDir = () => {
+  return path.join(cacheDir, STORAGE_PATH.memory);
+};
+
+/**
  * 初始化内置助手的规则和技能文件到用户目录
  * Initialize builtin assistant rule and skill files to user directory
  */
@@ -390,8 +399,15 @@ const initBuiltinAssistantRules = async (): Promise<void> => {
       if (!existsSync(userSkillsDir)) {
         mkdirSync(userSkillsDir);
       }
-      // 复制内置技能到用户目录（不覆盖已存在的文件）
+      // 复制内置技能到用户目录（不覆盖已存在的文件 — 首次安装用）
       await copyDirectoryRecursively(builtinSkillsDir, userSkillsDir, { overwrite: false });
+
+      // S36-002 fix: sync updated builtin skills on upgrade.
+      // Compare SKILL.md mtime — if source is newer, overwrite the entire skill directory.
+      // Only affects Margay-managed builtins (has .margay-skill.json with builtin:true).
+      // User-imported skills (no metadata or builtin:false) are never touched.
+      syncBuiltinSkillUpdates(builtinSkillsDir, userSkillsDir);
+
       console.log(`[Margay] Skills directory initialized: ${userSkillsDir}`);
     } catch (error) {
       console.warn(`[Margay] Failed to copy skills directory:`, error);
@@ -538,6 +554,53 @@ const initBuiltinAssistantRules = async (): Promise<void> => {
 };
 
 /**
+ * S36-002 fix: Sync updated builtin skills from app bundle to user directory.
+ * Compares SKILL.md mtime — if source is newer, overwrites the entire skill directory.
+ * Only affects Margay-managed builtins (identified by .margay-skill.json with builtin:true
+ * or by existence in the source builtinSkillsDir). User-imported skills are never touched.
+ */
+function syncBuiltinSkillUpdates(builtinSkillsDir: string, userSkillsDir: string): void {
+  try {
+    const sourceEntries = readdirSync(builtinSkillsDir, { withFileTypes: true });
+    let updatedCount = 0;
+
+    for (const entry of sourceEntries) {
+      if (!entry.isDirectory()) continue;
+
+      const srcSkillDir = path.join(builtinSkillsDir, entry.name);
+      const destSkillDir = path.join(userSkillsDir, entry.name);
+
+      // Skip if destination doesn't exist (handled by initial copy above)
+      if (!existsSync(destSkillDir)) continue;
+
+      // Compare SKILL.md mtime — the primary indicator of skill version
+      const srcSkillMd = path.join(srcSkillDir, 'SKILL.md');
+      const destSkillMd = path.join(destSkillDir, 'SKILL.md');
+
+      if (!existsSync(srcSkillMd) || !existsSync(destSkillMd)) continue;
+
+      const srcMtime = statSync(srcSkillMd).mtimeMs;
+      const destMtime = statSync(destSkillMd).mtimeMs;
+
+      if (srcMtime > destMtime) {
+        // Source is newer — overwrite the entire skill directory
+        cpSync(srcSkillDir, destSkillDir, { recursive: true, force: true });
+        // Ensure metadata marks it as builtin
+        const metadataPath = path.join(destSkillDir, '.margay-skill.json');
+        writeFileSync(metadataPath, JSON.stringify({ managedBy: 'margay', builtin: true }, null, 2), 'utf-8');
+        updatedCount++;
+      }
+    }
+
+    if (updatedCount > 0) {
+      console.log(`[Margay] Updated ${updatedCount} builtin skill(s) to latest version`);
+    }
+  } catch (error) {
+    console.warn('[Margay] Failed to sync builtin skill updates:', error);
+  }
+}
+
+/**
  * 获取内置助手配置（不包含 context，context 从文件读取）
  * Get built-in assistant configurations (without context, context is read from files)
  */
@@ -545,9 +608,9 @@ const getBuiltinAssistants = (): AcpBackendConfig[] => {
   const assistants: AcpBackendConfig[] = [];
 
   for (const preset of ASSISTANT_PRESETS) {
-    // 从预设配置中读取默认启用的技能列表（不包含 cron，因为它是内置 skill，自动注入）
-    // Read default enabled skills from preset config (excluding cron, which is builtin and auto-injected)
-    const defaultEnabledSkills = preset.defaultEnabledSkills;
+    // 从预设配置中读取默认技能列表
+    // Read default skills from preset config
+    const defaultSkills = preset.defaultSkills;
     const enabledByDefault = preset.id === 'cowork';
 
     assistants.push({
@@ -565,7 +628,7 @@ const getBuiltinAssistants = (): AcpBackendConfig[] => {
       isBuiltin: true,
       presetAgentType: preset.presetAgentType || 'gemini',
       // Cowork 默认启用所有内置技能 / Cowork enables all builtin skills by default
-      enabledSkills: defaultEnabledSkills,
+      enabledSkills: defaultSkills,
     });
   }
 
@@ -684,8 +747,8 @@ const initStorage = async () => {
         // presetAgentType is user-controlled, use builtin default if not set
         const resolvedPresetAgentType = existing.presetAgentType ?? builtin.presetAgentType;
 
-        // 为有 defaultEnabledSkills 配置的内置助手添加默认技能（仅在迁移时且用户未设置 enabledSkills 时）
-        // Add default enabled skills for builtin assistants with defaultEnabledSkills (only during migration and if user hasn't set enabledSkills)
+        // 为有 defaultSkills 配置的内置助手添加默认技能（仅在迁移时且用户未设置 enabledSkills 时）
+        // Add default skills for builtin assistants with defaultSkills (only during migration and if user hasn't set enabledSkills)
         let resolvedEnabledSkills = existing.enabledSkills;
         const needsSkillsMigration = needsBuiltinSkillsMigration && builtin.enabledSkills && (!existing.enabledSkills || existing.enabledSkills.length === 0);
         if (needsSkillsMigration) {
@@ -728,7 +791,27 @@ const initStorage = async () => {
     console.error('[Margay] Failed to initialize builtin assistants:', error);
   }
 
-  // 6. 初始化数据库（better-sqlite3）
+  // 6. 初始化记忆存储目录
+  // Initialize memory storage directories
+  try {
+    const memoryDir = getMemoryDir();
+    if (!existsSync(memoryDir)) {
+      mkdirSync(memoryDir);
+    }
+    const assistantMemoryDir = path.join(memoryDir, 'assistant');
+    if (!existsSync(assistantMemoryDir)) {
+      mkdirSync(assistantMemoryDir);
+    }
+    const workspaceMemoryDir = path.join(memoryDir, 'workspace');
+    if (!existsSync(workspaceMemoryDir)) {
+      mkdirSync(workspaceMemoryDir);
+    }
+    console.log(`[Margay] Memory directories initialized: ${memoryDir}`);
+  } catch (error) {
+    console.error('[Margay] Failed to initialize memory directories:', error);
+  }
+
+  // 7. 初始化数据库（better-sqlite3）
   try {
     getDatabase();
   } catch (error) {
@@ -763,6 +846,6 @@ export const getSystemDir = () => {
  * 获取助手规则目录路径（供其他模块使用）
  * Get assistant rules directory path (for use by other modules)
  */
-export { getAssistantsDir, getSkillsDir };
+export { getAssistantsDir, getSkillsDir, getMemoryDir };
 
 export default initStorage;

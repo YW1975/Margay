@@ -758,6 +758,7 @@
       "allowMCPTool": "서버 \"{{serverName}}\"에서 MCP 도구 \"{{toolName}}\" 실행을 허용하시겠습니까?",
       "yesAllowOnce": "예, 한 번 허용",
       "yesAllowAlways": "예, 항상 허용",
+      "yesAllowWorkspace": "예, 이 작업 공간에서 항상 허용",
       "yesAlwaysAllowTool": "예, 서버 \"{{serverName}}\"의 도구 \"{{toolName}}\" 항상 허용",
       "yesAlwaysAllowServer": "예, 서버 \"{{serverName}}\"의 모든 도구 항상 허용",
       "no": "아니요 (esc)"
