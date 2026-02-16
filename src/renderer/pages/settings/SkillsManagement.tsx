@@ -6,7 +6,7 @@
 
 import { ipcBridge } from '@/common';
 import { Button, Collapse, Input, Message, Modal, Popover, Tooltip, Typography } from '@arco-design/web-react';
-import { CheckOne, CloseOne, FolderOpen, Loading, Plus, Refresh } from '@icon-park/react';
+import { CheckOne, CloseOne, Delete, FolderOpen, Loading, Plus, Refresh } from '@icon-park/react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -278,6 +278,31 @@ const SkillsManagement: React.FC = () => {
     [depMap, handleInstallDep, t]
   );
 
+  const handleDeleteSkill = useCallback(
+    async (skillName: string) => {
+      Modal.confirm({
+        title: t('settings.deleteSkillConfirm', { defaultValue: 'Delete Skill' }),
+        content: t('settings.deleteSkillMessage', { defaultValue: 'Are you sure you want to delete "{{name}}"? This cannot be undone.', name: skillName }),
+        okButtonProps: { status: 'danger' },
+        onOk: async () => {
+          try {
+            const result = await ipcBridge.fs.deleteSkill.invoke({ skillName });
+            if (result.success) {
+              Message.success(t('settings.skillDeleted', { defaultValue: 'Skill "{{name}}" deleted', name: skillName }));
+              void loadSkills();
+              void checkDependencies();
+            } else {
+              Message.error(result.msg || 'Delete failed');
+            }
+          } catch (error) {
+            Message.error(`Delete failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          }
+        },
+      });
+    },
+    [t, loadSkills, checkDependencies]
+  );
+
   const builtinSkills = availableSkills.filter((s) => !s.isCustom);
   const customSkills = availableSkills.filter((s) => s.isCustom);
 
@@ -388,6 +413,11 @@ const SkillsManagement: React.FC = () => {
         {skill.description && <div className='text-12px text-t-secondary mt-2px line-clamp-2'>{skill.description}</div>}
         {renderDepList(skill.name)}
       </div>
+      {showCustomBadge && (
+        <Tooltip content={t('settings.deleteSkill', { defaultValue: 'Delete skill' })}>
+          <Button type='text' status='danger' size='mini' icon={<Delete size={14} />} onClick={() => void handleDeleteSkill(skill.name)} className='shrink-0 mt-2px' />
+        </Tooltip>
+      )}
     </div>
   );
 

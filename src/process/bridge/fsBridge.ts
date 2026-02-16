@@ -778,9 +778,19 @@ export function initFsBridge(): void {
         }
       }
 
+      // Path safety: reject names that could escape userSkillsDir
+      if (!skillName || skillName.includes('/') || skillName.includes('\\') || skillName === '.' || skillName === '..' || skillName.startsWith('.')) {
+        return { success: false, msg: `Invalid skill name: "${skillName}"` };
+      }
+
       // 获取用户 skills 目录 / Get user skills directory
       const userSkillsDir = getUserSkillsDir();
       const targetDir = path.join(userSkillsDir, skillName);
+
+      // Belt-and-suspenders: verify resolved path is within userSkillsDir
+      if (!path.resolve(targetDir).startsWith(path.resolve(userSkillsDir) + path.sep)) {
+        return { success: false, msg: 'Invalid skill path' };
+      }
 
       // Rev 4: check unified flat directory for duplicate (builtin or user)
       try {
@@ -818,6 +828,48 @@ export function initFsBridge(): void {
         success: false,
         msg: `Failed to import skill: ${error instanceof Error ? error.message : String(error)}`,
       };
+    }
+  });
+
+  // 删除用户 skill / Delete a user-installed skill (only custom skills, never builtins)
+  ipcBridge.fs.deleteSkill.provider(async ({ skillName }) => {
+    try {
+      // Path traversal protection: reject empty, slashes, dots-only, and parent refs
+      if (!skillName || skillName.includes('/') || skillName.includes('\\') || skillName === '.' || skillName === '..' || skillName.startsWith('.')) {
+        return { success: false, msg: 'Invalid skill name' };
+      }
+
+      const userSkillsDir = getUserSkillsDir();
+      const skillDir = path.join(userSkillsDir, skillName);
+
+      // Verify resolved path is still within userSkillsDir (belt-and-suspenders)
+      if (!path.resolve(skillDir).startsWith(path.resolve(userSkillsDir) + path.sep)) {
+        return { success: false, msg: 'Invalid skill path' };
+      }
+
+      // Verify skill exists
+      try {
+        await fs.access(skillDir);
+      } catch {
+        return { success: false, msg: `Skill "${skillName}" not found` };
+      }
+
+      // Protect builtin skills from deletion
+      try {
+        const metaRaw = await fs.readFile(path.join(skillDir, '.margay-skill.json'), 'utf-8');
+        const meta = JSON.parse(metaRaw);
+        if (meta?.managedBy === 'margay' && meta.builtin === true) {
+          return { success: false, msg: `Cannot delete builtin skill "${skillName}"` };
+        }
+      } catch {
+        // No metadata = user-installed, safe to delete
+      }
+
+      await fs.rm(skillDir, { recursive: true, force: true });
+      console.log(`[fsBridge] Deleted skill "${skillName}" from ${skillDir}`);
+      return { success: true, msg: `Skill "${skillName}" deleted` };
+    } catch (error) {
+      return { success: false, msg: `Failed to delete skill: ${error instanceof Error ? error.message : String(error)}` };
     }
   });
 

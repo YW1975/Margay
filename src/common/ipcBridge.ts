@@ -143,6 +143,8 @@ export const fs = {
     >,
     void
   >('check-skill-dependencies'),
+  // 删除用户 skill / Delete a user-installed skill
+  deleteSkill: bridge.buildProvider<IBridgeResponse, { skillName: string }>('delete-skill'),
   // 安装单个 skill 依赖 / Install a single skill dependency (structured payload — never executes raw strings)
   installSkillDependency: bridge.buildProvider<IBridgeResponse<{ output: string }>, { type: 'bin' | 'npm' | 'python' | 'mcp'; name: string }>('install-skill-dependency'),
 };
