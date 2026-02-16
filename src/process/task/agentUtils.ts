@@ -45,15 +45,17 @@ export interface FirstMessageConfig {
   additionalDirs?: string[];
   /** 助手 ID（用于加载 L2 助手记忆） / Assistant ID (for loading L2 assistant memory) */
   assistantId?: string;
+  /** ACP 后端 ID（用于读取 agent 原生记忆） / ACP backend ID (for reading agent native memory) */
+  agentBackend?: string;
 }
 
 /**
- * 加载组织记忆（L2 助手记忆 + L3 工作空间记忆）
- * Load organizational memory (L2 assistant memory + L3 workspace memory)
+ * 加载组织记忆原始内容（L2 助手记忆 + L3 工作空间记忆）
+ * Load raw organizational memory content (L2 assistant + L3 workspace)
+ *
+ * Shared by all engines: ACP/Codex use via loadMemorySections(), Gemini uses directly for userMemory.
  */
-function loadMemorySections(assistantId?: string, workspace?: string): string[] {
-  const memorySections: string[] = [];
-
+export function loadMemoryStrings(assistantId?: string, workspace?: string): { assistantMemory?: string; workspaceMemory?: string } {
   try {
     // Lazy import to avoid circular dependencies — only used in main process
     // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -63,33 +65,51 @@ function loadMemorySections(assistantId?: string, workspace?: string): string[] 
     const memoryDir = getMemoryDir();
     const fileManager = new MemoryFileManager(memoryDir);
 
+    let assistantMemory: string | undefined;
+    let workspaceMemory: string | undefined;
+
     // L2: Assistant memory
     if (assistantId) {
       const memoryPath = fileManager.getAssistantMemoryPath(assistantId);
-      const assistantMemory = fileManager.readAssistantMemory(assistantId);
-      if (assistantMemory.trim()) {
-        memorySections.push(`[Assistant Memory - Cross Session]\n${assistantMemory}`);
-        // Lazy index into SQLite (non-blocking, best-effort)
-        indexMemoryEntry('assistant', assistantId, assistantMemory, memoryPath);
+      const content = fileManager.readAssistantMemory(assistantId);
+      if (content?.trim()) {
+        assistantMemory = content;
+        indexMemoryEntry('assistant', assistantId, content, memoryPath);
       }
     }
 
     // L3: Workspace memory
     if (workspace) {
       const memoryPath = fileManager.getWorkspaceMemoryPath(workspace);
-      const workspaceMemory = fileManager.readWorkspaceMemory(workspace);
-      if (workspaceMemory.trim()) {
-        memorySections.push(`[Workspace Context]\n${workspaceMemory}`);
+      const content = fileManager.readWorkspaceMemory(workspace);
+      if (content?.trim()) {
+        workspaceMemory = content;
         const hash = MemoryFileManager.computeWorkspaceHash(workspace);
-        indexMemoryEntry('workspace', hash, workspaceMemory, memoryPath);
+        indexMemoryEntry('workspace', hash, content, memoryPath);
       }
     }
-  } catch (error) {
-    // Memory loading failure is non-fatal — continue without memory
-    console.warn('[agentUtils] Failed to load memory:', error);
-  }
 
-  return memorySections;
+    return { assistantMemory, workspaceMemory };
+  } catch (error) {
+    console.warn('[agentUtils] Failed to load memory:', error);
+    return {};
+  }
+}
+
+/**
+ * 加载格式化的记忆段落（用于首条消息前缀注入）
+ * Load formatted memory sections (for first-message prefix injection)
+ */
+function loadMemorySections(assistantId?: string, workspace?: string): string[] {
+  const { assistantMemory, workspaceMemory } = loadMemoryStrings(assistantId, workspace);
+  const sections: string[] = [];
+  if (assistantMemory) {
+    sections.push(`[Assistant Memory - Cross Session]\n${assistantMemory}`);
+  }
+  if (workspaceMemory) {
+    sections.push(`[Workspace Context]\n${workspaceMemory}`);
+  }
+  return sections;
 }
 
 /**
@@ -147,6 +167,20 @@ export async function prepareFirstMessage(content: string, config: FirstMessageC
   // L2 + L3 memory injection
   const memorySections = loadMemorySections(config.assistantId, config.workspace);
   sections.push(...memorySections);
+
+  // Agent native memory (ACP backends only)
+  if (config.agentBackend && config.workspace) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { readAgentNativeMemory } = require('../services/memory/AgentMemoryAdapter');
+      const nativeMemory = readAgentNativeMemory(config.agentBackend, config.workspace);
+      if (nativeMemory) {
+        sections.push(`[Agent Memory - Cross Session]\n${nativeMemory}`);
+      }
+    } catch {
+      // Non-fatal: agent native memory is supplementary
+    }
+  }
 
   // additionalDirs is already normalized by normalizeAdditionalDirs() at conversation creation time
   const additionalDirs = config.additionalDirs ?? [];

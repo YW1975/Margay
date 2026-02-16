@@ -23,6 +23,7 @@ import { handlePreviewOpenEvent } from '../utils/previewUtils';
 import BaseAgentManager from './BaseAgentManager';
 import { hasCronCommands } from './CronCommandDetector';
 import { extractTextFromMessage, processCronInMessage } from './MessageMiddleware';
+import { loadMemoryStrings } from './agentUtils';
 
 // gemini agent管理器类
 type UiMcpServerConfig = {
@@ -152,65 +153,10 @@ export class GeminiAgentManager extends BaseAgentManager<
         // Workspace skills directory for Gemini to load workspace-specific skills
         const workspaceSkillsDir = path.join(this.workspace, '.margay', 'skills');
 
-        // Load L2/L3 organizational memory for Gemini userMemory injection
-        // 加载 L2/L3 组织记忆用于 Gemini userMemory 注入
-        let assistantMemory: string | undefined;
-        let workspaceMemory: string | undefined;
-        try {
-          const { getMemoryDir } = await import('../initStorage');
-          const { MemoryFileManager } = await import('../services/memory/MemoryFileManager');
-          const memoryDir = getMemoryDir();
-          const fileManager = new MemoryFileManager(memoryDir);
-          // Use preset assistant ID as stable identity for L2 memory lookup
-          // 使用预设助手 ID 作为稳定的 L2 记忆查找键
-          const assistantId = this.presetAssistantId || this.contextFileName;
-          if (assistantId) {
-            const content = fileManager.readAssistantMemory(assistantId);
-            if (content?.trim()) {
-              assistantMemory = content;
-              // Lazy index into SQLite (best-effort)
-              try {
-                const { MemoryStore } = await import('../services/memory/MemoryStore');
-                const result = MemoryStore.upsert({
-                  id: `assistant:${assistantId}`,
-                  scope: 'assistant',
-                  ownerId: assistantId,
-                  category: 'summary',
-                  summary: content.trim().split('\n')[0]?.slice(0, 200) || '',
-                  filePath: fileManager.getAssistantMemoryPath(assistantId),
-                });
-                if (!result.success) {
-                  console.warn(`[GeminiAgentManager] Assistant memory indexing failed:`, result.error);
-                }
-              } catch (error) {
-                console.warn(`[GeminiAgentManager] Assistant memory indexing error:`, error);
-              }
-            }
-          }
-          const wsContent = fileManager.readWorkspaceMemory(this.workspace);
-          if (wsContent?.trim()) {
-            workspaceMemory = wsContent;
-            try {
-              const { MemoryStore } = await import('../services/memory/MemoryStore');
-              const hash = MemoryFileManager.computeWorkspaceHash(this.workspace);
-              const result = MemoryStore.upsert({
-                id: `workspace:${hash}`,
-                scope: 'workspace',
-                ownerId: hash,
-                category: 'summary',
-                summary: wsContent.trim().split('\n')[0]?.slice(0, 200) || '',
-                filePath: fileManager.getWorkspaceMemoryPath(this.workspace),
-              });
-              if (!result.success) {
-                console.warn(`[GeminiAgentManager] Workspace memory indexing failed:`, result.error);
-              }
-            } catch (error) {
-              console.warn(`[GeminiAgentManager] Workspace memory indexing error:`, error);
-            }
-          }
-        } catch (error) {
-          console.warn('[GeminiAgentManager] Failed to load memory:', error);
-        }
+        // Load L2/L3 organizational memory via shared loader (agentUtils)
+        // 通过共享加载器加载 L2/L3 组织记忆
+        const memoryAssistantId = this.presetAssistantId || this.contextFileName;
+        const { assistantMemory, workspaceMemory } = loadMemoryStrings(memoryAssistantId, this.workspace);
 
         return this.start({
           ...config,
