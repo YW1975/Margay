@@ -636,32 +636,77 @@ const getBuiltinAssistants = (): AcpBackendConfig[] => {
 };
 
 /**
+ * MCP defaults version — bump when adding new default servers.
+ * v1: chrome-devtools only
+ * v2: add social-monitor servers (mcp-hacker-news, mcp-reddit, twitter-mcp-server)
+ */
+const MCP_DEFAULTS_VERSION = 2;
+
+interface McpDefaultEntry {
+  command: string;
+  args: string[];
+  description: string;
+  enabled: boolean;
+  env?: Record<string, string>;
+  /** Version when this server was added */
+  since: number;
+}
+
+const MCP_DEFAULT_SERVERS: Record<string, McpDefaultEntry> = {
+  'chrome-devtools': {
+    command: 'npx',
+    args: ['-y', 'chrome-devtools-mcp@latest'],
+    description: 'Chrome DevTools MCP — browser automation and debugging',
+    enabled: false,
+    since: 1,
+  },
+  'mcp-hacker-news': {
+    command: 'npx',
+    args: ['-y', 'mcp-hacker-news'],
+    description: 'Hacker News MCP — read stories, comments, and user submissions (no auth required)',
+    enabled: false,
+    since: 2,
+  },
+  'mcp-reddit': {
+    command: 'uvx',
+    args: ['mcp-reddit'],
+    description: 'Reddit MCP — read posts, comments, and trending content (requires uvx)',
+    enabled: false,
+    since: 2,
+  },
+  'twitter-mcp-server': {
+    command: 'npx',
+    args: ['-y', 'twitter-mcp-server'],
+    description: 'Twitter/X MCP — read timeline, post tweets (requires account credentials in env)',
+    enabled: false,
+    env: {
+      TWITTER_USERNAME: '',
+      TWITTER_PASSWORD: '',
+      TWITTER_EMAIL: '',
+    },
+    since: 2,
+  },
+};
+
+/**
  * 创建默认的 MCP 服务器配置
  */
 const getDefaultMcpServers = (): IMcpServer[] => {
   const now = Date.now();
-  const defaultConfig = {
-    mcpServers: {
-      'chrome-devtools': {
-        command: 'npx',
-        args: ['-y', 'chrome-devtools-mcp@latest'],
-      },
-    },
-  };
-
-  return Object.entries(defaultConfig.mcpServers).map(([name, config], index) => ({
+  return Object.entries(MCP_DEFAULT_SERVERS).map(([name, config], index) => ({
     id: `mcp_default_${now}_${index}`,
     name,
-    description: `Default MCP server: ${name}`,
-    enabled: false, // 默认不启用，让用户手动开启
+    description: config.description,
+    enabled: config.enabled,
     transport: {
       type: 'stdio' as const,
       command: config.command,
       args: config.args,
+      ...(config.env ? { env: config.env } : {}),
     },
     createdAt: now,
     updatedAt: now,
-    originalJson: JSON.stringify({ [name]: config }, null, 2),
+    originalJson: JSON.stringify({ [name]: { command: config.command, args: config.args, ...(config.env ? { env: config.env } : {}) } }, null, 2),
   }));
 };
 
@@ -688,12 +733,41 @@ const initStorage = async () => {
   // 4. 初始化 MCP 配置（为所有用户提供默认配置）
   try {
     const existingMcpConfig = await configFile.get('mcp.config').catch((): undefined => undefined);
+    const currentVersion = ((await configFile.get('mcp.defaultsVersion').catch(() => 0)) as number) || 0;
 
-    // 仅当配置不存在或为空时，写入默认值（适用于新用户和老用户）
     if (!existingMcpConfig || !Array.isArray(existingMcpConfig) || existingMcpConfig.length === 0) {
+      // New user: write full defaults
       const defaultServers = getDefaultMcpServers();
       await configFile.set('mcp.config', defaultServers);
-      console.log('[Margay] Default MCP servers initialized');
+      await configFile.set('mcp.defaultsVersion', MCP_DEFAULTS_VERSION);
+      console.log('[Margay] Default MCP servers initialized (v' + MCP_DEFAULTS_VERSION + ')');
+    } else if (currentVersion < MCP_DEFAULTS_VERSION) {
+      // Existing user: one-time merge of new defaults (by name, no duplicates)
+      const existingNames = new Set(existingMcpConfig.map((s: IMcpServer) => s.name));
+      const now = Date.now();
+      const newServers = Object.entries(MCP_DEFAULT_SERVERS)
+        .filter(([name, config]) => !existingNames.has(name) && config.since > currentVersion)
+        .map(([name, config], index) => ({
+          id: `mcp_default_${now}_${index}`,
+          name,
+          description: config.description,
+          enabled: config.enabled,
+          transport: {
+            type: 'stdio' as const,
+            command: config.command,
+            args: config.args,
+            ...(config.env ? { env: config.env } : {}),
+          },
+          createdAt: now,
+          updatedAt: now,
+          originalJson: JSON.stringify({ [name]: { command: config.command, args: config.args, ...(config.env ? { env: config.env } : {}) } }, null, 2),
+        }));
+
+      if (newServers.length > 0) {
+        await configFile.set('mcp.config', [...existingMcpConfig, ...newServers]);
+        console.log('[Margay] MCP defaults migrated v' + currentVersion + '→v' + MCP_DEFAULTS_VERSION + ':', newServers.map((s) => s.name).join(', '));
+      }
+      await configFile.set('mcp.defaultsVersion', MCP_DEFAULTS_VERSION);
     }
   } catch (error) {
     console.error('[Margay] Failed to initialize default MCP servers:', error);

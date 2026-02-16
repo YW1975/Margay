@@ -51,6 +51,7 @@ export interface IConfigStorageRefer {
   'model.config': IProvider[];
   'mcp.config': IMcpServer[];
   'mcp.agentInstallStatus': Record<string, string[]>;
+  'mcp.defaultsVersion': number;
   language: string;
   theme: string;
   colorScheme: string;

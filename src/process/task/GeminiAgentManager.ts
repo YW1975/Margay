@@ -261,7 +261,7 @@ export class GeminiAgentManager extends BaseAgentManager<
       // 转换为 @margay/agent-core 期望的格式
       const mcpConfig: Record<string, UiMcpServerConfig> = {};
       mcpServers
-        .filter((server: IMcpServer) => server.enabled && server.status === 'connected') // 只使用启用且连接成功的服务器
+        .filter((server: IMcpServer) => server.enabled) // 使用所有启用的服务器（引擎负责建立连接）
         .forEach((server: IMcpServer) => {
           // 只处理 stdio 类型的传输方式，因为 @margay/agent-core 只支持这种类型
           if (server.transport.type === 'stdio') {

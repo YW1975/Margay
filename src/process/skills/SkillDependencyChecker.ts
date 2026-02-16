@@ -255,11 +255,15 @@ async function checkMcp(name: string): Promise<DependencyCheckResult & { type: '
       return { type: 'mcp', name, status: 'missing', install: '' };
     }
 
-    if (server.enabled && server.status === 'connected') {
+    // Dependency semantics: "installed" = configured + enabled.
+    // Connection status is a runtime detail — MCP servers aren't connected
+    // until a conversation actually uses them. Checking `status === 'connected'`
+    // here would make the dependency always appear missing at check time.
+    if (server.enabled) {
       return { type: 'mcp', name, status: 'installed', install: '' };
     }
 
-    return { type: 'mcp', name, status: 'missing', install: '', error: server.enabled ? 'Configured but not connected' : 'Configured but disabled' };
+    return { type: 'mcp', name, status: 'missing', install: '', error: 'Configured but disabled' };
   } catch {
     return { type: 'mcp', name, status: 'error', install: '', error: 'Failed to read MCP config' };
   }
