@@ -143,8 +143,8 @@ export const fs = {
     >,
     void
   >('check-skill-dependencies'),
-  // 安装单个 skill 依赖 / Install a single skill dependency
-  installSkillDependency: bridge.buildProvider<IBridgeResponse, { install: string }>('install-skill-dependency'),
+  // 安装单个 skill 依赖 / Install a single skill dependency (structured payload — never executes raw strings)
+  installSkillDependency: bridge.buildProvider<IBridgeResponse<{ output: string }>, { type: 'bin' | 'npm' | 'python' | 'mcp'; name: string }>('install-skill-dependency'),
 };
 
 export const fileWatch = {

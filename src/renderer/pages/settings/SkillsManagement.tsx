@@ -229,23 +229,53 @@ const SkillsManagement: React.FC = () => {
     [t, loadSkills, loadEngineNativeSkills, checkDependencies]
   );
 
+  const [installing, setInstalling] = useState<string | null>(null);
+
   const handleInstallDep = useCallback(
     async (dep: DependencyCheck) => {
-      if (!dep.install) return;
+      if (dep.type === 'bin') {
+        // bin deps can't be auto-installed — show hint
+        Message.info(t('settings.depManualInstall', { defaultValue: 'System binary "{name}" requires manual installation', name: dep.name }) + (dep.install ? `: ${dep.install}` : ''));
+        return;
+      }
+      if (dep.type === 'mcp') {
+        Message.info(t('settings.depMcpEnable', { defaultValue: 'MCP server "{name}" — enable in Settings > MCP', name: dep.name }));
+        return;
+      }
+      // npm / python — auto-install via backend
+      setInstalling(`${dep.type}:${dep.name}`);
       try {
-        await ipcBridge.shell.openInTerminal.invoke({ command: dep.install });
-        Message.info(t('settings.depInstallOpened', { defaultValue: 'Install command opened in terminal. Re-check after installation.' }));
-      } catch {
-        // Fallback: copy to clipboard
-        try {
-          await navigator.clipboard.writeText(dep.install);
-          Message.info(t('settings.depInstallCopied', { defaultValue: 'Install command copied to clipboard: {cmd}', cmd: dep.install }));
-        } catch {
-          Message.info(dep.install);
+        const result = await ipcBridge.fs.installSkillDependency.invoke({ type: dep.type, name: dep.name });
+        if (result.success) {
+          Message.success(t('settings.depInstalled', { defaultValue: '{name} installed successfully', name: dep.name }));
+          // Re-check dependencies after install
+          void checkDependencies();
+        } else {
+          Message.error(result.msg || `Failed to install ${dep.name}`);
         }
+      } catch (error) {
+        Message.error(`Install failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      } finally {
+        setInstalling(null);
       }
     },
-    [t]
+    [t, checkDependencies]
+  );
+
+  const handleInstallAllMissing = useCallback(
+    async (skillName: string) => {
+      const report = depMap.get(skillName);
+      if (!report) return;
+      const installable = report.dependencies.filter((d) => d.status !== 'installed' && (d.type === 'npm' || d.type === 'python'));
+      if (installable.length === 0) {
+        Message.info(t('settings.depNoAutoInstall', { defaultValue: 'No auto-installable dependencies. Check bin/MCP items manually.' }));
+        return;
+      }
+      for (const dep of installable) {
+        await handleInstallDep(dep);
+      }
+    },
+    [depMap, handleInstallDep, t]
   );
 
   const builtinSkills = availableSkills.filter((s) => !s.isCustom);
@@ -269,30 +299,46 @@ const SkillsManagement: React.FC = () => {
 
     const missingDeps = report.dependencies.filter((d) => d.status !== 'installed');
 
+    const autoInstallable = missingDeps.filter((d) => d.type === 'npm' || d.type === 'python');
+
     return (
       <Popover
         trigger='click'
         position='bottom'
         content={
           <div className='p-8px space-y-6px max-w-[360px]'>
-            <div className='text-12px font-medium mb-4px'>{t('settings.missingDeps', { defaultValue: 'Missing Dependencies' })}</div>
-            {missingDeps.map((dep) => (
-              <div key={`${dep.type}-${dep.name}`} className='flex items-center justify-between gap-8px p-4px bg-fill-1 rounded-4px'>
-                <div className='flex-1 min-w-0'>
-                  <div className='flex items-center gap-4px'>
-                    <span className='text-11px font-medium'>{dep.name}</span>
-                    <span className='text-9px px-3px py-0.5 bg-gray-100 text-gray-500 rounded uppercase'>{dep.type}</span>
+            <div className='flex items-center justify-between mb-4px'>
+              <div className='text-12px font-medium'>{t('settings.missingDeps', { defaultValue: 'Missing Dependencies' })}</div>
+              {autoInstallable.length > 1 && (
+                <Button size='mini' type='primary' status='warning' loading={!!installing} onClick={() => void handleInstallAllMissing(skillName)} className='shrink-0'>
+                  {t('settings.installAll', { defaultValue: 'Install All' })}
+                </Button>
+              )}
+            </div>
+            {missingDeps.map((dep) => {
+              const canAutoInstall = dep.type === 'npm' || dep.type === 'python';
+              const isInstalling = installing === `${dep.type}:${dep.name}`;
+              return (
+                <div key={`${dep.type}-${dep.name}`} className='flex items-center justify-between gap-8px p-4px bg-fill-1 rounded-4px'>
+                  <div className='flex-1 min-w-0'>
+                    <div className='flex items-center gap-4px'>
+                      <span className='text-11px font-medium'>{dep.name}</span>
+                      <span className='text-9px px-3px py-0.5 bg-gray-100 text-gray-500 rounded uppercase'>{dep.type}</span>
+                    </div>
+                    {dep.error && <div className='text-10px text-orange-500 mt-1px'>{dep.error}</div>}
+                    {!canAutoInstall && dep.install && <div className='text-10px text-t-tertiary mt-1px'>{dep.install}</div>}
                   </div>
-                  {dep.error && <div className='text-10px text-orange-500 mt-1px'>{dep.error}</div>}
+                  {canAutoInstall ? (
+                    <Button size='mini' type='outline' status='warning' loading={isInstalling} disabled={!!installing} onClick={() => void handleInstallDep(dep)} className='shrink-0'>
+                      {t('settings.install', { defaultValue: 'Install' })}
+                    </Button>
+                  ) : (
+                    <span className='text-9px text-t-tertiary shrink-0'>{dep.type === 'mcp' ? 'MCP Settings' : 'Manual'}</span>
+                  )}
                 </div>
-                {dep.install && (
-                  <Button size='mini' type='outline' status='warning' onClick={() => void handleInstallDep(dep)} className='shrink-0'>
-                    {t('settings.install', { defaultValue: 'Install' })}
-                  </Button>
-                )}
-              </div>
-            ))}
-            <div className='text-10px text-t-tertiary mt-4px'>{t('settings.depInstallHint', { defaultValue: 'Click Install to open in terminal, then re-check.' })}</div>
+              );
+            })}
+            <div className='text-10px text-t-tertiary mt-4px'>{autoInstallable.length > 0 ? t('settings.depAutoInstallHint', { defaultValue: 'npm/python deps are auto-installed. bin/MCP require manual setup.' }) : t('settings.depManualHint', { defaultValue: 'These dependencies require manual setup.' })}</div>
           </div>
         }
       >
@@ -314,7 +360,7 @@ const SkillsManagement: React.FC = () => {
         {report.dependencies.map((dep) => {
           const isOk = dep.status === 'installed';
           return (
-            <Tooltip key={`${dep.type}-${dep.name}`} content={isOk ? `${dep.name}${dep.version ? ` v${dep.version}` : ''} - installed` : `${dep.name} - ${dep.install || 'not installed'}`}>
+            <Tooltip key={`${dep.type}-${dep.name}`} content={isOk ? `${dep.name}${dep.version ? ` v${dep.version}` : ''} - installed` : `${dep.name} - ${installing === `${dep.type}:${dep.name}` ? 'installing...' : dep.install || 'not installed'}`}>
               <span className={`inline-flex items-center gap-2px text-10px px-3px py-0.5 rounded border ${isOk ? 'bg-green-50/50 text-green-600 border-green-200/60' : 'bg-red-50/50 text-red-500 border-red-200/60 cursor-pointer hover:bg-red-100/50'}`} style={{ fontSize: '9px' }} onClick={isOk ? undefined : () => void handleInstallDep(dep)}>
                 {isOk ? <CheckOne size={9} fill='#16a34a' /> : <CloseOne size={9} fill='#ef4444' />}
                 {dep.type}:{dep.name}

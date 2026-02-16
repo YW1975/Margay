@@ -975,13 +975,68 @@ export function initFsBridge(): void {
     }
   });
 
-  // 安装单个 skill 依赖 / Open terminal to install a skill dependency
-  ipcBridge.fs.installSkillDependency.provider(async ({ install }) => {
-    if (!install || typeof install !== 'string') {
-      return { success: false, msg: 'No install command provided' };
+  // 安装单个 skill 依赖 / Auto-install via hardcoded command templates (never executes raw strings)
+  ipcBridge.fs.installSkillDependency.provider(async ({ type, name }) => {
+    if (!type || !name) {
+      return { success: false, msg: 'Missing type or name' };
     }
-    // We don't execute the command directly — instead we return it for
-    // the frontend to pass to shell.openInTerminal
-    return { success: true, msg: install };
+
+    const { execFile } = await import('child_process');
+    const INSTALL_TIMEOUT = 60_000; // 60 seconds
+
+    const execInstall = (cmd: string, args: string[]): Promise<{ ok: boolean; output: string }> =>
+      new Promise((resolve) => {
+        try {
+          execFile(cmd, args, { timeout: INSTALL_TIMEOUT, windowsHide: true }, (error, stdout, stderr) => {
+            if (error) {
+              resolve({ ok: false, output: stderr || error.message });
+            } else {
+              resolve({ ok: true, output: stdout.trim() });
+            }
+          });
+        } catch {
+          resolve({ ok: false, output: 'Failed to spawn install process' });
+        }
+      });
+
+    switch (type) {
+      case 'npm': {
+        // Sanitize: only allow npm-valid package name chars
+        const safeName = name.replace(/[^a-zA-Z0-9@/_.-]/g, '');
+        if (!safeName) return { success: false, msg: 'Invalid npm package name' };
+        const result = await execInstall('npm', ['install', '-g', safeName]);
+        return result.ok ? { success: true, msg: `Installed ${safeName}`, data: { output: result.output } } : { success: false, msg: `npm install failed: ${result.output}` };
+      }
+      case 'python': {
+        // Sanitize: only allow Python identifier chars
+        const safeName = name.replace(/[^a-zA-Z0-9_]/g, '');
+        if (!safeName) return { success: false, msg: 'Invalid Python package name' };
+        const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
+        const result = await execInstall(pythonCmd, ['-m', 'pip', 'install', '--user', safeName]);
+        if (!result.ok) {
+          return { success: false, msg: `pip install failed: ${result.output}` };
+        }
+        // Known multi-step deps: run hardcoded post-install commands
+        const PYTHON_POST_INSTALL: Record<string, string[][]> = {
+          playwright: [[pythonCmd, '-m', 'playwright', 'install', 'chromium']],
+        };
+        const postSteps = PYTHON_POST_INSTALL[safeName];
+        if (postSteps) {
+          for (const step of postSteps) {
+            const postResult = await execInstall(step[0], step.slice(1));
+            if (!postResult.ok) {
+              return { success: false, msg: `Post-install step failed for ${safeName}: ${postResult.output}` };
+            }
+          }
+        }
+        return { success: true, msg: `Installed ${safeName}`, data: { output: result.output } };
+      }
+      case 'bin':
+        return { success: false, msg: `System binary "${name}" requires manual installation (e.g., brew install ${name})` };
+      case 'mcp':
+        return { success: false, msg: `MCP server "${name}" — enable in Settings > MCP` };
+      default:
+        return { success: false, msg: `Unknown dependency type: ${type}` };
+    }
   });
 }
