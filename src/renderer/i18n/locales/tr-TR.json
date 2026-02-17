@@ -799,7 +799,18 @@
     "globalSkills": "Global Yetenekler",
     "globalSkillsDescription": "Ana dizin düzeyinde yüklü yetenekler (~/.claude/skills/, ~/.gemini/skills/). Salt okunur.",
     "skillImported": "\"{{name}}\" yeteneği başarıyla içe aktarıldı",
-    "skillImportFailed": "Yetenek içe aktarılamadı"
+    "skillImportFailed": "Yetenek içe aktarılamadı",
+    "deleteSkill": "Yeteneği sil",
+    "deleteSkillConfirm": "Yeteneği Sil",
+    "deleteSkillMessage": "\"{{name}}\" silinsin mi? Bu işlem geri alınamaz.",
+    "skillDeleted": "\"{{name}}\" yeteneği silindi",
+    "installAll": "Tümünü Yükle",
+    "depInstalled": "{{name}} başarıyla yüklendi",
+    "depManualInstall": "Sistem ikili dosyası \"{{name}}\" manuel kurulum gerektirir",
+    "depMcpEnable": "MCP sunucusu \"{{name}}\" — Ayarlar > MCP'de etkinleştirin",
+    "depNoAutoInstall": "Otomatik yüklenebilir bağımlılık yok. bin/MCP öğelerini manuel kontrol edin.",
+    "depAutoInstallHint": "npm/python bağımlılıkları otomatik yüklenir. bin/MCP manuel kurulum gerektirir.",
+    "depManualHint": "Bu bağımlılıklar manuel kurulum gerektirir."
   },
 
   "messages": {
@@ -836,6 +847,7 @@
       "allowMCPTool": "\"{{serverName}}\" sunucusundan \"{{toolName}}\" MCP aracının çalıştırılmasına izin ver?",
       "yesAllowOnce": "Evet, bir kez izin ver",
       "yesAllowAlways": "Evet, her zaman izin ver",
+      "yesAllowWorkspace": "Evet, bu çalışma alanında her zaman izin ver",
       "yesAlwaysAllowTool": "Evet, \"{{serverName}}\" sunucusundan \"{{toolName}}\" aracına her zaman izin ver",
       "yesAlwaysAllowServer": "Evet, \"{{serverName}}\" sunucusundaki tüm araçlara her zaman izin ver",
       "no": "Hayır (esc)"

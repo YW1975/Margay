@@ -2,6 +2,16 @@
 name: pdf
 description: Comprehensive PDF manipulation toolkit for extracting text and tables, creating new PDFs, merging/splitting documents, and handling forms. When Claude needs to fill in a PDF form or programmatically process, generate, or analyze PDF documents at scale.
 license: Proprietary. LICENSE.txt has complete terms
+dependencies:
+  - type: bin
+    name: python3
+    install: 'brew install python3'
+  - type: python
+    name: pypdf
+    install: 'pip install pypdf'
+  - type: python
+    name: pdfplumber
+    install: 'pip install pdfplumber'
 ---
 
 # PDF Processing Guide

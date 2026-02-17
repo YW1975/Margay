@@ -124,6 +124,29 @@ export const fs = {
   detectEngineNativeSkills: bridge.buildProvider<IBridgeResponse<Array<{ name: string; engine: 'claude' | 'codex' | 'gemini'; path: string; hasSkillMd: boolean }>>, { workspace: string }>('detect-engine-native-skills'),
   // 检测全局 skills（~/.claude/skills/, ~/.gemini/skills/）/ Detect global engine skills at home directory
   detectGlobalSkills: bridge.buildProvider<IBridgeResponse<Array<{ name: string; engine: 'claude' | 'gemini'; path: string; hasSkillMd: boolean }>>, void>('detect-global-skills'),
+  // 检查所有 skill 的依赖状态 / Check dependency status for all skills
+  checkSkillDependencies: bridge.buildProvider<
+    IBridgeResponse<
+      Array<{
+        skillName: string;
+        dependencies: Array<{
+          type: 'bin' | 'npm' | 'python' | 'mcp';
+          name: string;
+          status: 'installed' | 'missing' | 'error';
+          install: string;
+          version?: string;
+          error?: string;
+        }>;
+        allSatisfied: boolean;
+        requiredMissing: number;
+      }>
+    >,
+    void
+  >('check-skill-dependencies'),
+  // 删除用户 skill / Delete a user-installed skill
+  deleteSkill: bridge.buildProvider<IBridgeResponse, { skillName: string }>('delete-skill'),
+  // 安装单个 skill 依赖 / Install a single skill dependency (structured payload — never executes raw strings)
+  installSkillDependency: bridge.buildProvider<IBridgeResponse<{ output: string }>, { type: 'bin' | 'npm' | 'python' | 'mcp'; name: string }>('install-skill-dependency'),
 };
 
 export const fileWatch = {

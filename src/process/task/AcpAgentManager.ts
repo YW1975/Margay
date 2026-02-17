@@ -27,6 +27,8 @@ interface AcpAgentManagerData {
   conversation_id: string;
   customAgentId?: string; // 用于标识特定自定义代理的 UUID / UUID for identifying specific custom agent
   presetContext?: string; // 智能助手的预设规则/提示词 / Preset context from smart assistant
+  /** 预设助手 ID（用于 L2 记忆查找）/ Preset assistant ID (for L2 memory lookup) */
+  presetAssistantId?: string;
   /** 启用的 skills 列表，用于过滤 SkillManager 加载的 skills / Enabled skills list for filtering SkillManager skills */
   enabledSkills?: string[];
   /** Force yolo mode (auto-approve) - used by CronService for scheduled tasks */
@@ -246,7 +248,7 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
       // Distribute skills on every message so newly installed skills are picked up
       // 每次发消息前分发 skills，确保新安装的 skill 立即可见
       if (this.options.workspace && (this.options.backend === 'claude' || this.options.backend === 'custom')) {
-        distributeForClaude(this.options.workspace, this.options.enabledSkills);
+        distributeForClaude(this.options.workspace);
       }
       await this.initAgent(this.options);
       // Save user message to chat history ONLY after successful sending
@@ -263,6 +265,8 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
             presetContext: this.options.presetContext,
             workspace: this.options.workspace,
             additionalDirs: this.options.additionalDirs,
+            assistantId: this.options.presetAssistantId || this.options.customAgentId,
+            agentBackend: this.options.backend,
           });
         }
 

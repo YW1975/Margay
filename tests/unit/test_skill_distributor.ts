@@ -12,13 +12,13 @@ import os from 'os';
 // --- Mock initStorage before importing SkillDistributor ---
 const testRoot = path.join(os.tmpdir(), `margay-skill-test-${process.pid}`);
 const mockSkillsDir = path.join(testRoot, 'skills');
-const mockBuiltinDir = path.join(testRoot, 'skills', '_builtin');
+const _mockBuiltinDir = path.join(testRoot, 'skills', '_builtin');
 
 jest.mock('../../src/process/initStorage', () => ({
   getSkillsDir: () => mockSkillsDir,
 }));
 
-import { shouldDistributeSkill, computeGeminiDisabledSkills, hasProvenanceMarker, readSkillMetadata, writeSkillMetadata, PROVENANCE_MARKER, SKILL_METADATA_FILENAME, distributeForClaude, distributeForGemini, detectEngineNativeSkills, detectGlobalSkills } from '../../src/process/task/SkillDistributor';
+import { hasProvenanceMarker, readSkillMetadata, writeSkillMetadata, PROVENANCE_MARKER, SKILL_METADATA_FILENAME, distributeForClaude, distributeForGemini, detectEngineNativeSkills, detectGlobalSkills } from '../../src/process/task/SkillDistributor';
 
 // --- Helpers ---
 
@@ -45,30 +45,6 @@ function cleanTestRoot(): void {
 // --- Tests ---
 
 describe('SkillDistributor', () => {
-  describe('shouldDistributeSkill — canonical enabledSkills semantics', () => {
-    it('builtin always distributes regardless of enabledSkills', () => {
-      expect(shouldDistributeSkill('cron', true, undefined)).toBe(true);
-      expect(shouldDistributeSkill('cron', true, [])).toBe(true);
-      expect(shouldDistributeSkill('cron', true, ['pptx'])).toBe(true);
-    });
-
-    it('optional distributes when enabledSkills is undefined (all skills)', () => {
-      expect(shouldDistributeSkill('pptx', false, undefined)).toBe(true);
-    });
-
-    it('optional distributes when enabledSkills is empty (all skills)', () => {
-      expect(shouldDistributeSkill('pptx', false, [])).toBe(true);
-    });
-
-    it('optional distributes when listed in enabledSkills', () => {
-      expect(shouldDistributeSkill('pptx', false, ['pptx', 'docx'])).toBe(true);
-    });
-
-    it('optional does NOT distribute when not listed in enabledSkills', () => {
-      expect(shouldDistributeSkill('pptx', false, ['docx'])).toBe(false);
-    });
-  });
-
   describe('skill metadata — .margay-skill.json read/write', () => {
     beforeEach(() => {
       cleanTestRoot();
@@ -121,69 +97,6 @@ describe('SkillDistributor', () => {
     });
   });
 
-  describe('computeGeminiDisabledSkills — whitelist to blacklist conversion', () => {
-    beforeEach(() => {
-      cleanTestRoot();
-      // Rev 4: Use flat storage with metadata instead of _builtin/ directory
-      mkdirSync(mockSkillsDir, { recursive: true });
-      createSkillWithMetadata(mockSkillsDir, 'cron', true);
-      createSkillWithMetadata(mockSkillsDir, 'shell-bg', true);
-      createSkillDir(mockSkillsDir, 'pptx');
-      createSkillDir(mockSkillsDir, 'docx');
-      createSkillDir(mockSkillsDir, 'xlsx');
-    });
-
-    afterEach(() => {
-      cleanTestRoot();
-    });
-
-    it('returns undefined when enabledSkills is undefined (no filtering)', () => {
-      expect(computeGeminiDisabledSkills(undefined)).toBeUndefined();
-    });
-
-    it('returns undefined when enabledSkills is empty (no filtering)', () => {
-      expect(computeGeminiDisabledSkills([])).toBeUndefined();
-    });
-
-    it('disables optional skills NOT in enabledSkills', () => {
-      const disabled = computeGeminiDisabledSkills(['pptx']);
-      expect(disabled).toBeDefined();
-      expect(disabled).toContain('docx');
-      expect(disabled).toContain('xlsx');
-      expect(disabled).not.toContain('pptx');
-    });
-
-    it('never disables builtin skills', () => {
-      const disabled = computeGeminiDisabledSkills(['pptx']);
-      expect(disabled).not.toContain('cron');
-      expect(disabled).not.toContain('shell-bg');
-    });
-
-    it('returns undefined when all optional skills are enabled', () => {
-      expect(computeGeminiDisabledSkills(['pptx', 'docx', 'xlsx'])).toBeUndefined();
-    });
-  });
-
-  describe('computeGeminiDisabledSkills — legacy _builtin/ backward compat', () => {
-    beforeEach(() => {
-      cleanTestRoot();
-      // Legacy: Use _builtin/ subdirectory
-      mkdirSync(mockBuiltinDir, { recursive: true });
-      createSkillDir(mockBuiltinDir, 'cron');
-      createSkillDir(mockSkillsDir, 'pptx');
-    });
-
-    afterEach(() => {
-      cleanTestRoot();
-    });
-
-    it('legacy _builtin/ skills are still classified as builtin', () => {
-      const disabled = computeGeminiDisabledSkills(['pptx']);
-      // cron is in _builtin/ and should not be disabled
-      expect(disabled).toBeUndefined(); // only pptx is optional and it's enabled
-    });
-  });
-
   describe('copy-mode provenance marker — ownership detection', () => {
     const targetDir = path.join(testRoot, 'target-engine', '.claude', 'skills');
 
@@ -231,7 +144,7 @@ describe('SkillDistributor', () => {
 
       // Run distribution — "pptx" should be SKIPPED because no provenance marker
       const workspace = path.join(testRoot, 'target-engine');
-      distributeForClaude(workspace, ['pptx']);
+      distributeForClaude(workspace);
 
       // Verify: engine's custom file still exists (not deleted)
       expect(existsSync(path.join(enginePptx, 'custom-engine-file.txt'))).toBe(true);
@@ -252,7 +165,7 @@ describe('SkillDistributor', () => {
 
       // Run distribution
       const workspace = path.join(testRoot, 'target-engine');
-      distributeForClaude(workspace, ['pptx']);
+      distributeForClaude(workspace);
 
       // Verify: pptx directory exists (was updated, not left stale)
       expect(existsSync(path.join(targetDir, 'pptx'))).toBe(true);
@@ -273,7 +186,7 @@ describe('SkillDistributor', () => {
 
       // Run distribution with no skills matching "old-skill"
       const workspace = path.join(testRoot, 'target-engine');
-      distributeForClaude(workspace, ['pptx']);
+      distributeForClaude(workspace);
 
       // Verify: old-skill directory is NOT removed (no provenance marker = not ours to delete)
       expect(existsSync(staleDir)).toBe(true);
@@ -284,7 +197,7 @@ describe('SkillDistributor', () => {
 
       // Initial distribution with one optional skill
       const workspace = path.join(testRoot, 'target-engine');
-      distributeForClaude(workspace, undefined);
+      distributeForClaude(workspace);
 
       // Verify: pptx is distributed
       expect(existsSync(path.join(targetDir, 'pptx'))).toBe(true);
@@ -293,32 +206,10 @@ describe('SkillDistributor', () => {
       createSkillDir(mockSkillsDir, 'newly-installed');
 
       // Re-distribute (simulates sendMessage calling distributeForClaude again)
-      distributeForClaude(workspace, undefined);
+      distributeForClaude(workspace);
 
       // Verify: newly installed skill is now visible
       expect(existsSync(path.join(targetDir, 'newly-installed'))).toBe(true);
-      // Original skill still present
-      expect(existsSync(path.join(targetDir, 'pptx'))).toBe(true);
-    });
-
-    it('newly installed skill is NOT distributed when enabledSkills excludes it', () => {
-      mkdirSync(targetDir, { recursive: true });
-
-      // Initial distribution with explicit enabledSkills
-      const workspace = path.join(testRoot, 'target-engine');
-      distributeForClaude(workspace, ['pptx']);
-
-      // Verify: pptx is distributed
-      expect(existsSync(path.join(targetDir, 'pptx'))).toBe(true);
-
-      // Simulate installing a NEW skill after conversation started
-      createSkillDir(mockSkillsDir, 'newly-installed');
-
-      // Re-distribute with same enabledSkills that does NOT include 'newly-installed'
-      distributeForClaude(workspace, ['pptx']);
-
-      // Verify: newly installed skill is NOT distributed (not in enabledSkills)
-      expect(existsSync(path.join(targetDir, 'newly-installed'))).toBe(false);
       // Original skill still present
       expect(existsSync(path.join(targetDir, 'pptx'))).toBe(true);
     });
@@ -338,7 +229,7 @@ describe('SkillDistributor', () => {
 
       // Run distribution with no skills matching "old-skill"
       const workspace = path.join(testRoot, 'target-engine');
-      distributeForClaude(workspace, ['pptx']);
+      distributeForClaude(workspace);
 
       // Verify: old-skill directory IS removed (marker + manifest = safe to delete)
       expect(existsSync(staleDir)).toBe(false);
@@ -363,7 +254,7 @@ describe('SkillDistributor', () => {
       const workspace = path.join(testRoot, 'mtime-workspace');
 
       // First distribution: creates copy
-      distributeForClaude(workspace, ['pptx']);
+      distributeForClaude(workspace);
       expect(existsSync(path.join(targetDir, 'pptx', 'SKILL.md'))).toBe(true);
 
       // Read target content
@@ -373,7 +264,7 @@ describe('SkillDistributor', () => {
       writeFileSync(path.join(targetDir, 'pptx', 'SKILL.md'), contentBefore + '\n# Engine edit');
 
       // Second distribution: source mtime hasn't changed, so should skip
-      distributeForClaude(workspace, ['pptx']);
+      distributeForClaude(workspace);
 
       // Target should still have the engine edit (not overwritten)
       const contentAfter = readFileSync(path.join(targetDir, 'pptx', 'SKILL.md'), 'utf-8');
@@ -384,7 +275,7 @@ describe('SkillDistributor', () => {
       const workspace = path.join(testRoot, 'mtime-workspace');
 
       // First distribution
-      distributeForClaude(workspace, ['pptx']);
+      distributeForClaude(workspace);
 
       // Update source SKILL.md with a newer timestamp
       const sourcePath = path.join(mockSkillsDir, 'pptx', 'SKILL.md');
@@ -393,7 +284,7 @@ describe('SkillDistributor', () => {
       utimesSync(sourcePath, futureTime, futureTime);
 
       // Second distribution: should re-copy because source is newer
-      distributeForClaude(workspace, ['pptx']);
+      distributeForClaude(workspace);
 
       const targetContent = readFileSync(path.join(targetDir, 'pptx', 'SKILL.md'), 'utf-8');
       expect(targetContent).toContain('# Updated');
@@ -420,7 +311,7 @@ describe('SkillDistributor', () => {
       writeFileSync(path.join(skillDir, 'run.py'), 'print("hello")');
 
       const workspace = path.join(testRoot, 'inject-workspace');
-      distributeForClaude(workspace, undefined);
+      distributeForClaude(workspace);
 
       const deployedSkillMd = readFileSync(path.join(targetDir, 'scripted', 'SKILL.md'), 'utf-8');
       // Frontmatter must remain at file start (^---)
@@ -440,7 +331,7 @@ describe('SkillDistributor', () => {
       writeFileSync(path.join(skillDir, 'scripts', 'convert.py'), 'print("convert")');
 
       const workspace = path.join(testRoot, 'inject-workspace');
-      distributeForClaude(workspace, undefined);
+      distributeForClaude(workspace);
 
       const deployedSkillMd = readFileSync(path.join(targetDir, 'nested-scripts', 'SKILL.md'), 'utf-8');
       expect(deployedSkillMd).toMatch(/^---\n/);
@@ -453,7 +344,7 @@ describe('SkillDistributor', () => {
       writeFileSync(path.join(skillDir, 'SKILL.md'), '---\nname: no-script\ndescription: No scripts\n---\n# No Script');
 
       const workspace = path.join(testRoot, 'inject-workspace');
-      distributeForClaude(workspace, undefined);
+      distributeForClaude(workspace);
 
       const deployedSkillMd = readFileSync(path.join(targetDir, 'no-script', 'SKILL.md'), 'utf-8');
       expect(deployedSkillMd).not.toContain('[Skill scripts directory:');
@@ -476,19 +367,18 @@ describe('SkillDistributor', () => {
 
     it('distributes skills to .gemini/skills/ directory', () => {
       const workspace = path.join(testRoot, 'gemini-workspace');
-      distributeForGemini(workspace, undefined);
+      distributeForGemini(workspace);
 
       expect(existsSync(path.join(geminiTargetDir, 'cron', 'SKILL.md'))).toBe(true);
       expect(existsSync(path.join(geminiTargetDir, 'pptx', 'SKILL.md'))).toBe(true);
     });
 
-    it('respects enabledSkills filter', () => {
+    it('distributes all skills (no filtering)', () => {
       const workspace = path.join(testRoot, 'gemini-workspace');
-      distributeForGemini(workspace, ['pptx']);
+      distributeForGemini(workspace);
 
-      // cron is builtin, always distributed
+      // All skills are distributed (both builtin and optional)
       expect(existsSync(path.join(geminiTargetDir, 'cron', 'SKILL.md'))).toBe(true);
-      // pptx is enabled
       expect(existsSync(path.join(geminiTargetDir, 'pptx', 'SKILL.md'))).toBe(true);
     });
   });

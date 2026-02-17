@@ -13,10 +13,14 @@ export type AssistantPreset = {
   ruleFiles: Record<string, string>;
   skillFiles?: Record<string, string>;
   /**
-   * Default enabled skills for this assistant (skill names from skills/ directory).
-   * 此助手默认启用的技能列表（来自 skills/ 目录的技能名称）
+   * Default skills for this assistant (skill names from skills/ directory).
+   * These are priority skills whose full SKILL.md content is associated with the assistant.
+   * All skills remain available via engine-native discovery regardless of this list.
+   * 此助手的默认技能列表（来自 skills/ 目录的技能名称）。
+   * 这些是优先技能，其完整 SKILL.md 内容与助手关联。
+   * 无论此列表如何，所有技能都通过引擎原生发现机制保持可用。
    */
-  defaultEnabledSkills?: string[];
+  defaultSkills?: string[];
   nameI18n: Record<string, string>;
   descriptionI18n: Record<string, string>;
   promptsI18n?: Record<string, string[]>;
@@ -36,7 +40,7 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
       'en-US': 'cowork-skills.md',
       'zh-CN': 'cowork-skills.zh-CN.md',
     },
-    defaultEnabledSkills: ['skill-creator', 'pptx', 'docx', 'pdf', 'xlsx'],
+    defaultSkills: ['skill-creator', 'pptx', 'docx', 'pdf', 'xlsx', 'memory-manager'],
     nameI18n: {
       'en-US': 'Cowork',
       'zh-CN': 'Cowork',
@@ -195,7 +199,7 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
       'en-US': 'social-job-publisher-skills.md',
       'zh-CN': 'social-job-publisher-skills.zh-CN.md',
     },
-    defaultEnabledSkills: ['xiaohongshu-recruiter', 'x-recruiter'],
+    defaultSkills: ['xiaohongshu-recruiter', 'x-recruiter', 'memory-manager'],
     nameI18n: {
       'en-US': 'Social Job Publisher',
       'zh-CN': '社交招聘发布助手',
@@ -222,7 +226,7 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
       'en-US': 'moltbook-skills.md',
       'zh-CN': 'moltbook-skills.zh-CN.md',
     },
-    defaultEnabledSkills: ['moltbook'],
+    defaultSkills: ['moltbook', 'memory-manager'],
     nameI18n: {
       'en-US': 'moltbook',
       'zh-CN': 'moltbook',
@@ -245,7 +249,7 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
       'en-US': 'social-media-ops.md',
       'zh-CN': 'social-media-ops.zh-CN.md',
     },
-    defaultEnabledSkills: ['social-ops', 'cron', 'shell-bg'],
+    defaultSkills: ['social-ops', 'cron', 'shell-bg', 'memory-manager'],
     nameI18n: {
       'en-US': 'Social Media Ops',
       'zh-CN': '社交媒体运营',
@@ -268,7 +272,7 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
       'en-US': 'beautiful-mermaid.md',
       'zh-CN': 'beautiful-mermaid.zh-CN.md',
     },
-    defaultEnabledSkills: ['mermaid'],
+    defaultSkills: ['mermaid', 'memory-manager'],
     nameI18n: {
       'en-US': 'Beautiful Mermaid',
       'zh-CN': 'Beautiful Mermaid',
@@ -291,7 +295,7 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
       'en-US': 'my-love.md',
       'zh-CN': 'my-love.zh-CN.md',
     },
-    defaultEnabledSkills: ['cron'],
+    defaultSkills: ['cron', 'memory-manager'],
     nameI18n: {
       'en-US': 'My Love',
       'zh-CN': '喵爱',

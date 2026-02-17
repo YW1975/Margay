@@ -14,6 +14,7 @@ import { app } from 'electron';
 import { ipcBridge } from '../../common';
 import { getSystemDir, getAssistantsDir } from '../initStorage';
 import { detectEngineNativeSkills, detectGlobalSkills } from '../task/SkillDistributor';
+import { checkAllSkillDependencies } from '../skills/SkillDependencyChecker';
 import { readDirectoryRecursive } from '../utils';
 
 // ============================================================================
@@ -777,9 +778,19 @@ export function initFsBridge(): void {
         }
       }
 
+      // Path safety: reject names that could escape userSkillsDir
+      if (!skillName || skillName.includes('/') || skillName.includes('\\') || skillName === '.' || skillName === '..' || skillName.startsWith('.')) {
+        return { success: false, msg: `Invalid skill name: "${skillName}"` };
+      }
+
       // 获取用户 skills 目录 / Get user skills directory
       const userSkillsDir = getUserSkillsDir();
       const targetDir = path.join(userSkillsDir, skillName);
+
+      // Belt-and-suspenders: verify resolved path is within userSkillsDir
+      if (!path.resolve(targetDir).startsWith(path.resolve(userSkillsDir) + path.sep)) {
+        return { success: false, msg: 'Invalid skill path' };
+      }
 
       // Rev 4: check unified flat directory for duplicate (builtin or user)
       try {
@@ -817,6 +828,48 @@ export function initFsBridge(): void {
         success: false,
         msg: `Failed to import skill: ${error instanceof Error ? error.message : String(error)}`,
       };
+    }
+  });
+
+  // 删除用户 skill / Delete a user-installed skill (only custom skills, never builtins)
+  ipcBridge.fs.deleteSkill.provider(async ({ skillName }) => {
+    try {
+      // Path traversal protection: reject empty, slashes, dots-only, and parent refs
+      if (!skillName || skillName.includes('/') || skillName.includes('\\') || skillName === '.' || skillName === '..' || skillName.startsWith('.')) {
+        return { success: false, msg: 'Invalid skill name' };
+      }
+
+      const userSkillsDir = getUserSkillsDir();
+      const skillDir = path.join(userSkillsDir, skillName);
+
+      // Verify resolved path is still within userSkillsDir (belt-and-suspenders)
+      if (!path.resolve(skillDir).startsWith(path.resolve(userSkillsDir) + path.sep)) {
+        return { success: false, msg: 'Invalid skill path' };
+      }
+
+      // Verify skill exists
+      try {
+        await fs.access(skillDir);
+      } catch {
+        return { success: false, msg: `Skill "${skillName}" not found` };
+      }
+
+      // Protect builtin skills from deletion
+      try {
+        const metaRaw = await fs.readFile(path.join(skillDir, '.margay-skill.json'), 'utf-8');
+        const meta = JSON.parse(metaRaw);
+        if (meta?.managedBy === 'margay' && meta.builtin === true) {
+          return { success: false, msg: `Cannot delete builtin skill "${skillName}"` };
+        }
+      } catch {
+        // No metadata = user-installed, safe to delete
+      }
+
+      await fs.rm(skillDir, { recursive: true, force: true });
+      console.log(`[fsBridge] Deleted skill "${skillName}" from ${skillDir}`);
+      return { success: true, msg: `Skill "${skillName}" deleted` };
+    } catch (error) {
+      return { success: false, msg: `Failed to delete skill: ${error instanceof Error ? error.message : String(error)}` };
     }
   });
 
@@ -957,6 +1010,85 @@ export function initFsBridge(): void {
         success: false,
         msg: error instanceof Error ? error.message : 'Detection failed',
       });
+    }
+  });
+
+  // 检查所有 skill 的依赖状态 / Check dependency status for all installed skills
+  ipcBridge.fs.checkSkillDependencies.provider(async () => {
+    try {
+      const userSkillsDir = getUserSkillsDir();
+      const reports = await checkAllSkillDependencies(userSkillsDir);
+      return { success: true, data: reports };
+    } catch (error) {
+      return {
+        success: false,
+        msg: error instanceof Error ? error.message : 'Dependency check failed',
+      };
+    }
+  });
+
+  // 安装单个 skill 依赖 / Auto-install via hardcoded command templates (never executes raw strings)
+  ipcBridge.fs.installSkillDependency.provider(async ({ type, name }) => {
+    if (!type || !name) {
+      return { success: false, msg: 'Missing type or name' };
+    }
+
+    const { execFile } = await import('child_process');
+    const INSTALL_TIMEOUT = 60_000; // 60 seconds
+
+    const execInstall = (cmd: string, args: string[]): Promise<{ ok: boolean; output: string }> =>
+      new Promise((resolve) => {
+        try {
+          execFile(cmd, args, { timeout: INSTALL_TIMEOUT, windowsHide: true }, (error, stdout, stderr) => {
+            if (error) {
+              resolve({ ok: false, output: stderr || error.message });
+            } else {
+              resolve({ ok: true, output: stdout.trim() });
+            }
+          });
+        } catch {
+          resolve({ ok: false, output: 'Failed to spawn install process' });
+        }
+      });
+
+    switch (type) {
+      case 'npm': {
+        // Sanitize: only allow npm-valid package name chars
+        const safeName = name.replace(/[^a-zA-Z0-9@/_.-]/g, '');
+        if (!safeName) return { success: false, msg: 'Invalid npm package name' };
+        const result = await execInstall('npm', ['install', '-g', safeName]);
+        return result.ok ? { success: true, msg: `Installed ${safeName}`, data: { output: result.output } } : { success: false, msg: `npm install failed: ${result.output}` };
+      }
+      case 'python': {
+        // Sanitize: only allow Python identifier chars
+        const safeName = name.replace(/[^a-zA-Z0-9_]/g, '');
+        if (!safeName) return { success: false, msg: 'Invalid Python package name' };
+        const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
+        const result = await execInstall(pythonCmd, ['-m', 'pip', 'install', '--user', safeName]);
+        if (!result.ok) {
+          return { success: false, msg: `pip install failed: ${result.output}` };
+        }
+        // Known multi-step deps: run hardcoded post-install commands
+        const PYTHON_POST_INSTALL: Record<string, string[][]> = {
+          playwright: [[pythonCmd, '-m', 'playwright', 'install', 'chromium']],
+        };
+        const postSteps = PYTHON_POST_INSTALL[safeName];
+        if (postSteps) {
+          for (const step of postSteps) {
+            const postResult = await execInstall(step[0], step.slice(1));
+            if (!postResult.ok) {
+              return { success: false, msg: `Post-install step failed for ${safeName}: ${postResult.output}` };
+            }
+          }
+        }
+        return { success: true, msg: `Installed ${safeName}`, data: { output: result.output } };
+      }
+      case 'bin':
+        return { success: false, msg: `System binary "${name}" requires manual installation (e.g., brew install ${name})` };
+      case 'mcp':
+        return { success: false, msg: `MCP server "${name}" — enable in Settings > MCP` };
+      default:
+        return { success: false, msg: `Unknown dependency type: ${type}` };
     }
   });
 }

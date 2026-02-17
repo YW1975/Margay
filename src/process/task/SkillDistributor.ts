@@ -66,20 +66,6 @@ function writeSkillMetadata(skillDir: string, builtin: boolean): void {
 }
 
 /**
- * Determine which skills should be distributed based on enabledSkills filter.
- *
- * Canonical semantics:
- * - undefined → all skills (builtins + all optional)
- * - [] → all skills (same as undefined)
- * - ['pptx','docx'] → builtins + listed skills only
- */
-function shouldDistributeSkill(skillName: string, isBuiltin: boolean, enabledSkills?: string[]): boolean {
-  if (isBuiltin) return true;
-  if (!enabledSkills || enabledSkills.length === 0) return true;
-  return enabledSkills.includes(skillName);
-}
-
-/**
  * Check if an entry in the target directory is managed by Margay (is a symlink pointing to ~/.margay/skills/).
  */
 function isMargayManagedSymlink(entryPath: string, margaySkillsDir: string): boolean {
@@ -386,8 +372,9 @@ function discoverAllSkillNames(): { builtins: string[]; optional: string[] } {
 
 /**
  * Core distribution logic: distribute skills to a target engine directory.
+ * Rev 5: No enabledSkills filtering — all skills (builtins + optional) are distributed.
  */
-function distributeToEngineDir(targetDir: string, enabledSkills?: string[]): void {
+function distributeToEngineDir(targetDir: string): void {
   const skillsDir = getSkillsDir();
   const { builtins, optional } = discoverAllSkillNames();
 
@@ -405,18 +392,10 @@ function distributeToEngineDir(targetDir: string, enabledSkills?: string[]): voi
     return flatPath; // Default to flat (will fail gracefully)
   };
 
-  for (const name of builtins) {
-    if (shouldDistributeSkill(name, true, enabledSkills)) {
-      desiredSkillNames.add(name);
-      desiredEntries.push({ name, sourcePath: resolveSkillSource(name) });
-    }
-  }
-
-  for (const name of optional) {
-    if (shouldDistributeSkill(name, false, enabledSkills)) {
-      desiredSkillNames.add(name);
-      desiredEntries.push({ name, sourcePath: resolveSkillSource(name) });
-    }
+  // Distribute ALL skills unconditionally (no enabledSkills filtering)
+  for (const name of [...builtins, ...optional]) {
+    desiredSkillNames.add(name);
+    desiredEntries.push({ name, sourcePath: resolveSkillSource(name) });
   }
 
   // Ensure target directory exists
@@ -449,14 +428,66 @@ function distributeToEngineDir(targetDir: string, enabledSkills?: string[]): voi
   }
 }
 
+const IDENTITY_MARKER = '<!-- margay-managed -->';
+
+/**
+ * Write/update engine identity file with workspace skill discovery instructions.
+ * For Claude Code: {workspace}/.claude/CLAUDE.md
+ * For Codex: {workspace}/.agents/agent.md
+ *
+ * Uses a marker comment to identify Margay-managed sections. If the file already exists
+ * and contains user-created content (no marker), the Margay section is appended.
+ * If the file already has a Margay-managed section, it is replaced in-place.
+ */
+function writeEngineIdentityFile(workspace: string, engine: 'claude' | 'codex'): void {
+  const filePath = engine === 'claude' ? path.join(workspace, '.claude', 'CLAUDE.md') : path.join(workspace, '.agents', 'agent.md');
+
+  const skillsDirName = engine === 'claude' ? '.claude/skills' : '.agents/skills';
+
+  const margaySection = `${IDENTITY_MARKER}
+## Workspace Skills
+
+If the directory \`.margay/skills/\` exists in the workspace, scan it for subdirectories containing \`SKILL.md\`.
+For each skill found there that is NOT already present in \`${skillsDirName}/\`, copy the entire skill directory into \`${skillsDirName}/\`.
+This enables workspace-specific skills to be discovered alongside globally distributed skills.
+${IDENTITY_MARKER}`;
+
+  try {
+    const parentDir = path.dirname(filePath);
+    if (!existsSync(parentDir)) {
+      mkdirSync(parentDir, { recursive: true });
+    }
+
+    if (existsSync(filePath)) {
+      const existing = readFileSync(filePath, 'utf-8');
+      // Check if Margay section already exists
+      const markerRegex = new RegExp(`${IDENTITY_MARKER}[\\s\\S]*?${IDENTITY_MARKER}`, 'g');
+      if (markerRegex.test(existing)) {
+        // Replace existing Margay section
+        const updated = existing.replace(markerRegex, margaySection);
+        writeFileSync(filePath, updated, 'utf-8');
+      } else {
+        // Append Margay section
+        writeFileSync(filePath, existing.trimEnd() + '\n\n' + margaySection + '\n', 'utf-8');
+      }
+    } else {
+      writeFileSync(filePath, margaySection + '\n', 'utf-8');
+    }
+  } catch (error) {
+    console.warn(`[SkillDistributor] Failed to write identity file ${filePath}:`, error);
+  }
+}
+
 /**
  * Distribute Margay skills to Claude Code's discovery directory.
  * Claude Code discovers skills from {workspace}/.claude/skills/
+ * Also writes CLAUDE.md with workspace skill discovery instructions.
  */
-export function distributeForClaude(workspace: string, enabledSkills?: string[]): void {
+export function distributeForClaude(workspace: string): void {
   const targetDir = path.join(workspace, '.claude', 'skills');
   try {
-    distributeToEngineDir(targetDir, enabledSkills);
+    distributeToEngineDir(targetDir);
+    writeEngineIdentityFile(workspace, 'claude');
   } catch (error) {
     console.error('[SkillDistributor] Failed to distribute for Claude:', error);
   }
@@ -465,11 +496,13 @@ export function distributeForClaude(workspace: string, enabledSkills?: string[])
 /**
  * Distribute Margay skills to Codex CLI's discovery directory.
  * Codex discovers skills from {workspace}/.agents/skills/
+ * Also writes agent.md with workspace skill discovery instructions.
  */
-export function distributeForCodex(workspace: string, enabledSkills?: string[]): void {
+export function distributeForCodex(workspace: string): void {
   const targetDir = path.join(workspace, '.agents', 'skills');
   try {
-    distributeToEngineDir(targetDir, enabledSkills);
+    distributeToEngineDir(targetDir);
+    writeEngineIdentityFile(workspace, 'codex');
   } catch (error) {
     console.error('[SkillDistributor] Failed to distribute for Codex:', error);
   }
@@ -481,27 +514,17 @@ export function distributeForCodex(workspace: string, enabledSkills?: string[]):
  * Note: @margay/agent-core still loads skills from its own path; this is for UI display only.
  * Distribution is bootstrap-only (not per-send).
  */
-export function distributeForGemini(workspace: string, enabledSkills?: string[]): void {
+export function distributeForGemini(workspace: string): void {
   const targetDir = path.join(workspace, '.gemini', 'skills');
   try {
-    distributeToEngineDir(targetDir, enabledSkills);
+    distributeToEngineDir(targetDir);
   } catch (error) {
     console.error('[SkillDistributor] Failed to distribute for Gemini:', error);
   }
 }
 
-/**
- * Compute disabledSkills for Gemini's native SkillManager.
- *
- * Gemini's @margay/agent-core SkillManager scans the entire skillsDir and uses
- * disabledSkills to filter. We convert Margay's enabledSkills (whitelist)
- * to disabledSkills (blacklist) for the native engine.
- *
- * @param enabledSkills - Margay's enabledSkills from preset/conversation
- * @returns disabledSkills array for @margay/agent-core, or undefined if no filtering needed
- */
 /** Exported for testing. */
-export { shouldDistributeSkill, hasProvenanceMarker, readSkillMetadata, writeSkillMetadata, PROVENANCE_MARKER, SKILL_METADATA_FILENAME };
+export { hasProvenanceMarker, readSkillMetadata, writeSkillMetadata, PROVENANCE_MARKER, SKILL_METADATA_FILENAME };
 
 // --- Engine-native skill detection ---
 
@@ -613,18 +636,4 @@ export function detectGlobalSkills(homedir: string): GlobalSkill[] {
   }
 
   return results;
-}
-
-export function computeGeminiDisabledSkills(enabledSkills?: string[]): string[] | undefined {
-  // No filtering: all skills available
-  if (!enabledSkills || enabledSkills.length === 0) {
-    return undefined;
-  }
-
-  const { optional } = discoverAllSkillNames();
-
-  // Disabled = optional skills NOT in enabledSkills (builtins are never disabled)
-  const disabled = optional.filter((name) => !enabledSkills.includes(name));
-
-  return disabled.length > 0 ? disabled : undefined;
 }

@@ -63,11 +63,11 @@ export interface LoadCliConfigOptions {
   mcpServers?: Record<string, unknown>;
   /** 内置 skills 目录路径 / Builtin skills directory path */
   skillsDir?: string;
-  /** 启用的 skills 列表，用于过滤加载的 skills / Enabled skills list for filtering loaded skills */
-  enabledSkills?: string[];
+  /** 工作空间级 skills 目录路径 / Workspace-specific skills directory path */
+  workspaceSkillsDir?: string;
 }
 
-export async function loadCliConfig({ workspace, settings, extensions, sessionId, proxy, model, conversationToolConfig, yoloMode, mcpServers, skillsDir, enabledSkills }: LoadCliConfigOptions): Promise<Config> {
+export async function loadCliConfig({ workspace, settings, extensions, sessionId, proxy, model, conversationToolConfig, yoloMode, mcpServers, skillsDir, workspaceSkillsDir }: LoadCliConfigOptions): Promise<Config> {
   const argv: Partial<CliArgs> = {
     yolo: yoloMode,
   };
@@ -86,26 +86,41 @@ export async function loadCliConfig({ workspace, settings, extensions, sessionId
 
   const _ideModeFeature = (argv.ideModeFeature ?? settings.ideModeFeature ?? false) && !process.env.SANDBOX;
 
-  // 加载内置 skills 并创建虚拟 extension
-  // Load builtin skills and create a virtual extension
+  // 加载内置 skills 并创建虚拟 extension（不再过滤，全部加载）
+  // Load builtin skills and create a virtual extension (no filtering, load all)
   let builtinSkills: SkillDefinition[] = [];
   if (skillsDir) {
     try {
       builtinSkills = await loadSkillsFromDir(skillsDir);
-      console.log(`[Config] Loaded ${builtinSkills.length} builtin skills from ${skillsDir}`);
+      console.log(`[Config] Loaded ${builtinSkills.length} global skills from ${skillsDir}`);
+    } catch (error) {
+      console.warn(`[Config] Failed to load global skills from ${skillsDir}:`, error);
+    }
+  }
 
-      // 根据 enabledSkills 过滤 skills
-      // Filter skills based on enabledSkills
-      // 当 enabledSkills 是数组时（包括空数组），进行过滤
-      // When enabledSkills is an array (including empty), apply filtering
-      if (Array.isArray(enabledSkills)) {
-        const enabledSet = new Set(enabledSkills);
-        const originalCount = builtinSkills.length;
-        builtinSkills = builtinSkills.filter((skill) => enabledSet.has(skill.name));
-        console.log(`[Config] Filtered skills: ${builtinSkills.length}/${originalCount} enabled (${enabledSkills.join(', ') || 'none'})`);
+  // 加载工作空间级 skills（如果目录存在）
+  // Load workspace-specific skills (if directory exists)
+  if (workspaceSkillsDir) {
+    try {
+      const { existsSync } = await import('fs');
+      if (existsSync(workspaceSkillsDir)) {
+        const workspaceSkills = await loadSkillsFromDir(workspaceSkillsDir);
+        if (workspaceSkills.length > 0) {
+          // Workspace skills override global skills of same name
+          const globalNames = new Set(builtinSkills.map((s) => s.name));
+          const overridden: string[] = [];
+          for (const ws of workspaceSkills) {
+            if (globalNames.has(ws.name)) {
+              builtinSkills = builtinSkills.filter((s) => s.name !== ws.name);
+              overridden.push(ws.name);
+            }
+          }
+          builtinSkills.push(...workspaceSkills);
+          console.log(`[Config] Loaded ${workspaceSkills.length} workspace skills from ${workspaceSkillsDir}${overridden.length > 0 ? ` (overriding: ${overridden.join(', ')})` : ''}`);
+        }
       }
     } catch (error) {
-      console.warn(`[Config] Failed to load builtin skills from ${skillsDir}:`, error);
+      console.warn(`[Config] Failed to load workspace skills from ${workspaceSkillsDir}:`, error);
     }
   }
 

@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { mkdirSync as _mkdirSync, existsSync, readdirSync, readFileSync, cpSync, rmSync, writeFileSync } from 'fs';
+import { mkdirSync as _mkdirSync, existsSync, readdirSync, readFileSync, cpSync, rmSync, writeFileSync, statSync } from 'fs';
 import fs from 'fs/promises';
 import path from 'path';
 import { app } from 'electron';
@@ -29,6 +29,7 @@ const STORAGE_PATH = {
   env: '.margay-env',
   assistants: 'assistants',
   skills: 'skills',
+  memory: 'memory',
 };
 
 const getHomePage = getConfigPath;
@@ -341,6 +342,14 @@ const getSkillsDir = () => {
 };
 
 /**
+ * 获取记忆存储目录路径
+ * Get memory storage directory path
+ */
+const getMemoryDir = () => {
+  return path.join(cacheDir, STORAGE_PATH.memory);
+};
+
+/**
  * 初始化内置助手的规则和技能文件到用户目录
  * Initialize builtin assistant rule and skill files to user directory
  */
@@ -390,8 +399,15 @@ const initBuiltinAssistantRules = async (): Promise<void> => {
       if (!existsSync(userSkillsDir)) {
         mkdirSync(userSkillsDir);
       }
-      // 复制内置技能到用户目录（不覆盖已存在的文件）
+      // 复制内置技能到用户目录（不覆盖已存在的文件 — 首次安装用）
       await copyDirectoryRecursively(builtinSkillsDir, userSkillsDir, { overwrite: false });
+
+      // S36-002 fix: sync updated builtin skills on upgrade.
+      // Compare SKILL.md mtime — if source is newer, overwrite the entire skill directory.
+      // Only affects Margay-managed builtins (has .margay-skill.json with builtin:true).
+      // User-imported skills (no metadata or builtin:false) are never touched.
+      syncBuiltinSkillUpdates(builtinSkillsDir, userSkillsDir);
+
       console.log(`[Margay] Skills directory initialized: ${userSkillsDir}`);
     } catch (error) {
       console.warn(`[Margay] Failed to copy skills directory:`, error);
@@ -538,6 +554,53 @@ const initBuiltinAssistantRules = async (): Promise<void> => {
 };
 
 /**
+ * S36-002 fix: Sync updated builtin skills from app bundle to user directory.
+ * Compares SKILL.md mtime — if source is newer, overwrites the entire skill directory.
+ * Only affects Margay-managed builtins (identified by .margay-skill.json with builtin:true
+ * or by existence in the source builtinSkillsDir). User-imported skills are never touched.
+ */
+function syncBuiltinSkillUpdates(builtinSkillsDir: string, userSkillsDir: string): void {
+  try {
+    const sourceEntries = readdirSync(builtinSkillsDir, { withFileTypes: true });
+    let updatedCount = 0;
+
+    for (const entry of sourceEntries) {
+      if (!entry.isDirectory()) continue;
+
+      const srcSkillDir = path.join(builtinSkillsDir, entry.name);
+      const destSkillDir = path.join(userSkillsDir, entry.name);
+
+      // Skip if destination doesn't exist (handled by initial copy above)
+      if (!existsSync(destSkillDir)) continue;
+
+      // Compare SKILL.md mtime — the primary indicator of skill version
+      const srcSkillMd = path.join(srcSkillDir, 'SKILL.md');
+      const destSkillMd = path.join(destSkillDir, 'SKILL.md');
+
+      if (!existsSync(srcSkillMd) || !existsSync(destSkillMd)) continue;
+
+      const srcMtime = statSync(srcSkillMd).mtimeMs;
+      const destMtime = statSync(destSkillMd).mtimeMs;
+
+      if (srcMtime > destMtime) {
+        // Source is newer — overwrite the entire skill directory
+        cpSync(srcSkillDir, destSkillDir, { recursive: true, force: true });
+        // Ensure metadata marks it as builtin
+        const metadataPath = path.join(destSkillDir, '.margay-skill.json');
+        writeFileSync(metadataPath, JSON.stringify({ managedBy: 'margay', builtin: true }, null, 2), 'utf-8');
+        updatedCount++;
+      }
+    }
+
+    if (updatedCount > 0) {
+      console.log(`[Margay] Updated ${updatedCount} builtin skill(s) to latest version`);
+    }
+  } catch (error) {
+    console.warn('[Margay] Failed to sync builtin skill updates:', error);
+  }
+}
+
+/**
  * 获取内置助手配置（不包含 context，context 从文件读取）
  * Get built-in assistant configurations (without context, context is read from files)
  */
@@ -545,9 +608,9 @@ const getBuiltinAssistants = (): AcpBackendConfig[] => {
   const assistants: AcpBackendConfig[] = [];
 
   for (const preset of ASSISTANT_PRESETS) {
-    // 从预设配置中读取默认启用的技能列表（不包含 cron，因为它是内置 skill，自动注入）
-    // Read default enabled skills from preset config (excluding cron, which is builtin and auto-injected)
-    const defaultEnabledSkills = preset.defaultEnabledSkills;
+    // 从预设配置中读取默认技能列表
+    // Read default skills from preset config
+    const defaultSkills = preset.defaultSkills;
     const enabledByDefault = preset.id === 'cowork';
 
     assistants.push({
@@ -565,7 +628,7 @@ const getBuiltinAssistants = (): AcpBackendConfig[] => {
       isBuiltin: true,
       presetAgentType: preset.presetAgentType || 'gemini',
       // Cowork 默认启用所有内置技能 / Cowork enables all builtin skills by default
-      enabledSkills: defaultEnabledSkills,
+      enabledSkills: defaultSkills,
     });
   }
 
@@ -573,32 +636,77 @@ const getBuiltinAssistants = (): AcpBackendConfig[] => {
 };
 
 /**
+ * MCP defaults version — bump when adding new default servers.
+ * v1: chrome-devtools only
+ * v2: add social-monitor servers (mcp-hacker-news, mcp-reddit, twitter-mcp-server)
+ */
+const MCP_DEFAULTS_VERSION = 2;
+
+interface McpDefaultEntry {
+  command: string;
+  args: string[];
+  description: string;
+  enabled: boolean;
+  env?: Record<string, string>;
+  /** Version when this server was added */
+  since: number;
+}
+
+const MCP_DEFAULT_SERVERS: Record<string, McpDefaultEntry> = {
+  'chrome-devtools': {
+    command: 'npx',
+    args: ['-y', 'chrome-devtools-mcp@latest'],
+    description: 'Chrome DevTools MCP — browser automation and debugging',
+    enabled: false,
+    since: 1,
+  },
+  'mcp-hacker-news': {
+    command: 'npx',
+    args: ['-y', 'mcp-hacker-news'],
+    description: 'Hacker News MCP — read stories, comments, and user submissions (no auth required)',
+    enabled: false,
+    since: 2,
+  },
+  'mcp-reddit': {
+    command: 'uvx',
+    args: ['mcp-reddit'],
+    description: 'Reddit MCP — read posts, comments, and trending content (requires uvx)',
+    enabled: false,
+    since: 2,
+  },
+  'twitter-mcp-server': {
+    command: 'npx',
+    args: ['-y', 'twitter-mcp-server'],
+    description: 'Twitter/X MCP — read timeline, post tweets (requires account credentials in env)',
+    enabled: false,
+    env: {
+      TWITTER_USERNAME: '',
+      TWITTER_PASSWORD: '',
+      TWITTER_EMAIL: '',
+    },
+    since: 2,
+  },
+};
+
+/**
  * 创建默认的 MCP 服务器配置
  */
 const getDefaultMcpServers = (): IMcpServer[] => {
   const now = Date.now();
-  const defaultConfig = {
-    mcpServers: {
-      'chrome-devtools': {
-        command: 'npx',
-        args: ['-y', 'chrome-devtools-mcp@latest'],
-      },
-    },
-  };
-
-  return Object.entries(defaultConfig.mcpServers).map(([name, config], index) => ({
+  return Object.entries(MCP_DEFAULT_SERVERS).map(([name, config], index) => ({
     id: `mcp_default_${now}_${index}`,
     name,
-    description: `Default MCP server: ${name}`,
-    enabled: false, // 默认不启用，让用户手动开启
+    description: config.description,
+    enabled: config.enabled,
     transport: {
       type: 'stdio' as const,
       command: config.command,
       args: config.args,
+      ...(config.env ? { env: config.env } : {}),
     },
     createdAt: now,
     updatedAt: now,
-    originalJson: JSON.stringify({ [name]: config }, null, 2),
+    originalJson: JSON.stringify({ [name]: { command: config.command, args: config.args, ...(config.env ? { env: config.env } : {}) } }, null, 2),
   }));
 };
 
@@ -625,12 +733,41 @@ const initStorage = async () => {
   // 4. 初始化 MCP 配置（为所有用户提供默认配置）
   try {
     const existingMcpConfig = await configFile.get('mcp.config').catch((): undefined => undefined);
+    const currentVersion = ((await configFile.get('mcp.defaultsVersion').catch(() => 0)) as number) || 0;
 
-    // 仅当配置不存在或为空时，写入默认值（适用于新用户和老用户）
     if (!existingMcpConfig || !Array.isArray(existingMcpConfig) || existingMcpConfig.length === 0) {
+      // New user: write full defaults
       const defaultServers = getDefaultMcpServers();
       await configFile.set('mcp.config', defaultServers);
-      console.log('[Margay] Default MCP servers initialized');
+      await configFile.set('mcp.defaultsVersion', MCP_DEFAULTS_VERSION);
+      console.log('[Margay] Default MCP servers initialized (v' + MCP_DEFAULTS_VERSION + ')');
+    } else if (currentVersion < MCP_DEFAULTS_VERSION) {
+      // Existing user: one-time merge of new defaults (by name, no duplicates)
+      const existingNames = new Set(existingMcpConfig.map((s: IMcpServer) => s.name));
+      const now = Date.now();
+      const newServers = Object.entries(MCP_DEFAULT_SERVERS)
+        .filter(([name, config]) => !existingNames.has(name) && config.since > currentVersion)
+        .map(([name, config], index) => ({
+          id: `mcp_default_${now}_${index}`,
+          name,
+          description: config.description,
+          enabled: config.enabled,
+          transport: {
+            type: 'stdio' as const,
+            command: config.command,
+            args: config.args,
+            ...(config.env ? { env: config.env } : {}),
+          },
+          createdAt: now,
+          updatedAt: now,
+          originalJson: JSON.stringify({ [name]: { command: config.command, args: config.args, ...(config.env ? { env: config.env } : {}) } }, null, 2),
+        }));
+
+      if (newServers.length > 0) {
+        await configFile.set('mcp.config', [...existingMcpConfig, ...newServers]);
+        console.log('[Margay] MCP defaults migrated v' + currentVersion + '→v' + MCP_DEFAULTS_VERSION + ':', newServers.map((s) => s.name).join(', '));
+      }
+      await configFile.set('mcp.defaultsVersion', MCP_DEFAULTS_VERSION);
     }
   } catch (error) {
     console.error('[Margay] Failed to initialize default MCP servers:', error);
@@ -684,8 +821,8 @@ const initStorage = async () => {
         // presetAgentType is user-controlled, use builtin default if not set
         const resolvedPresetAgentType = existing.presetAgentType ?? builtin.presetAgentType;
 
-        // 为有 defaultEnabledSkills 配置的内置助手添加默认技能（仅在迁移时且用户未设置 enabledSkills 时）
-        // Add default enabled skills for builtin assistants with defaultEnabledSkills (only during migration and if user hasn't set enabledSkills)
+        // 为有 defaultSkills 配置的内置助手添加默认技能（仅在迁移时且用户未设置 enabledSkills 时）
+        // Add default skills for builtin assistants with defaultSkills (only during migration and if user hasn't set enabledSkills)
         let resolvedEnabledSkills = existing.enabledSkills;
         const needsSkillsMigration = needsBuiltinSkillsMigration && builtin.enabledSkills && (!existing.enabledSkills || existing.enabledSkills.length === 0);
         if (needsSkillsMigration) {
@@ -728,7 +865,27 @@ const initStorage = async () => {
     console.error('[Margay] Failed to initialize builtin assistants:', error);
   }
 
-  // 6. 初始化数据库（better-sqlite3）
+  // 6. 初始化记忆存储目录
+  // Initialize memory storage directories
+  try {
+    const memoryDir = getMemoryDir();
+    if (!existsSync(memoryDir)) {
+      mkdirSync(memoryDir);
+    }
+    const assistantMemoryDir = path.join(memoryDir, 'assistant');
+    if (!existsSync(assistantMemoryDir)) {
+      mkdirSync(assistantMemoryDir);
+    }
+    const workspaceMemoryDir = path.join(memoryDir, 'workspace');
+    if (!existsSync(workspaceMemoryDir)) {
+      mkdirSync(workspaceMemoryDir);
+    }
+    console.log(`[Margay] Memory directories initialized: ${memoryDir}`);
+  } catch (error) {
+    console.error('[Margay] Failed to initialize memory directories:', error);
+  }
+
+  // 7. 初始化数据库（better-sqlite3）
   try {
     getDatabase();
   } catch (error) {
@@ -763,6 +920,6 @@ export const getSystemDir = () => {
  * 获取助手规则目录路径（供其他模块使用）
  * Get assistant rules directory path (for use by other modules)
  */
-export { getAssistantsDir, getSkillsDir };
+export { getAssistantsDir, getSkillsDir, getMemoryDir };
 
 export default initStorage;
