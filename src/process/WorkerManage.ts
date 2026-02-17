@@ -53,8 +53,8 @@ const buildConversation = (conversation: TChatConversation, options?: BuildConve
           presetRules: conversation.extra.presetRules,
           // 向后兼容 / Backward compatible
           contextContent: conversation.extra.contextContent,
-          // 启用的 skills 列表（通过 SkillManager 加载）/ Enabled skills list (loaded via SkillManager)
-          enabledSkills: conversation.extra.enabledSkills,
+          // 预设助手 ID（用于 L2 记忆查找）/ Preset assistant ID (for L2 memory lookup)
+          presetAssistantId: conversation.extra.presetAssistantId,
           // Runtime options / 运行时选项
           yoloMode: options?.yoloMode,
         },

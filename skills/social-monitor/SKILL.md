@@ -1,6 +1,16 @@
 ---
 name: social-monitor
 description: Monitor your social media posts across X, Hacker News, and Reddit. Track engagement (replies, comments, upvotes), generate digests, and auto-reply on supported platforms. Use when user asks to check social media feedback, scan posts, reply to comments, or generate engagement reports.
+dependencies:
+  - type: mcp
+    name: twitter-mcp-server
+    install: 'Configure in Margay Settings > MCP'
+  - type: mcp
+    name: mcp-hacker-news
+    install: 'Configure in Margay Settings > MCP'
+  - type: mcp
+    name: mcp-reddit
+    install: 'Configure in Margay Settings > MCP'
 ---
 
 # Social Media Monitor Skill

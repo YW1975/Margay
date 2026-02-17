@@ -94,6 +94,8 @@ export const createAcpAgent = async (options: ICreateConversationParams): Promis
       agentName: extra.agentName,
       customAgentId: extra.customAgentId, // 同时用于标识预设助手 / Also used to identify preset assistant
       presetContext: extra.presetContext, // 智能助手的预设规则/提示词
+      // 预设助手 ID（用于 L2 记忆查找和 UI 显示）/ Preset assistant ID (for L2 memory lookup and UI display)
+      presetAssistantId: extra.presetAssistantId,
       // 启用的 skills 列表（通过 SkillManager 加载）/ Enabled skills list (loaded via SkillManager)
       enabledSkills: extra.enabledSkills,
     },

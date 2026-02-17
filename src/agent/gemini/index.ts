@@ -48,8 +48,12 @@ interface GeminiAgent2Options {
   contextContent?: string; // 向后兼容 / Backward compatible
   /** 内置 skills 目录路径，使用 @margay/agent-core SkillManager 加载 / Builtin skills directory path, loaded by @margay/agent-core SkillManager */
   skillsDir?: string;
-  /** 禁用的 skills 列表，传给 @margay/agent-core 原生 SkillManager / Disabled skills list passed to native SkillManager */
-  disabledSkills?: string[];
+  /** 工作空间级 skills 目录路径 / Workspace-specific skills directory path */
+  workspaceSkillsDir?: string;
+  /** L2 助手跨会话记忆内容 / L2 assistant cross-session memory content */
+  assistantMemory?: string;
+  /** L3 工作空间共享记忆内容 / L3 workspace shared memory content */
+  workspaceMemory?: string;
 }
 
 export class GeminiAgent {
@@ -81,8 +85,12 @@ export class GeminiAgent {
   private contextFileName: string | undefined;
   /** 内置 skills 目录路径 / Builtin skills directory path */
   private skillsDir?: string;
-  /** 禁用的 skills 列表（由 SkillDistributor 计算）/ Disabled skills list (computed by SkillDistributor) */
-  private disabledSkills?: string[];
+  /** 工作空间级 skills 目录路径 / Workspace-specific skills directory path */
+  private workspaceSkillsDir?: string;
+  /** L2 助手跨会话记忆 / L2 assistant cross-session memory */
+  private assistantMemory?: string;
+  /** L3 工作空间共享记忆 / L3 workspace shared memory */
+  private workspaceMemory?: string;
   bootstrap: Promise<void>;
   static buildFileServer(workspace: string) {
     return new FileDiscoveryService(workspace);
@@ -102,7 +110,9 @@ export class GeminiAgent {
     this.onStreamEvent = options.onStreamEvent;
     this.presetRules = options.presetRules;
     this.skillsDir = options.skillsDir;
-    this.disabledSkills = options.disabledSkills;
+    this.workspaceSkillsDir = options.workspaceSkillsDir;
+    this.assistantMemory = options.assistantMemory;
+    this.workspaceMemory = options.workspaceMemory;
     // 向后兼容：优先使用 presetRules，其次 contextContent / Backward compatible: prefer presetRules, fallback to contextContent
     this.contextContent = options.contextContent || options.presetRules;
     this.initClientEnv();
@@ -259,18 +269,9 @@ export class GeminiAgent {
       yoloMode,
       mcpServers: this.mcpServers,
       skillsDir: this.skillsDir,
+      workspaceSkillsDir: this.workspaceSkillsDir,
     });
     await this.config.initialize();
-
-    // @margay/agent-core 的 SkillManager.discoverSkills() 会重新从用户 skills 目录加载所有 skills
-    // 覆盖了 loadCliConfig 中的过滤，需要在这里重新应用 disabledSkills 过滤
-    // @margay/agent-core's SkillManager.discoverSkills() reloads all skills from user directory,
-    // overriding our filtering in loadCliConfig, so we need to re-apply disabledSkills filter here
-    if (this.disabledSkills && this.disabledSkills.length > 0) {
-      const disabledSet = new Set(this.disabledSkills);
-      this.config.getSkillManager().filterSkills((skill) => !disabledSet.has(skill.name));
-      console.log(`[GeminiAgent] Filtered out disabled skills after initialize: ${this.disabledSkills.join(', ')}`);
-    }
 
     // 对于 Google OAuth 认证，清除缓存的 OAuth 客户端以确保使用最新凭证
     // For Google OAuth auth, clear cached OAuth client to ensure fresh credentials
@@ -299,6 +300,22 @@ export class GeminiAgent {
       console.log(`[GeminiAgent] Injected presetRules into userMemory, total length: ${combined.length}`);
     } else {
       console.log(`[GeminiAgent] No presetRules to inject`);
+    }
+
+    // Inject L2/L3 organizational memory after rules
+    // 在规则之后注入 L2/L3 组织记忆
+    if (this.assistantMemory || this.workspaceMemory) {
+      const currentMemory = this.config.getUserMemory();
+      const memorySections: string[] = [currentMemory || ''];
+      if (this.assistantMemory) {
+        memorySections.push(`[Assistant Memory - Cross Session]\n${this.assistantMemory}`);
+      }
+      if (this.workspaceMemory) {
+        memorySections.push(`[Workspace Context]\n${this.workspaceMemory}`);
+      }
+      const combined = memorySections.filter(Boolean).join('\n\n');
+      this.config.setUserMemory(combined);
+      console.log(`[GeminiAgent] Injected org memory into userMemory, total length: ${combined.length}`);
     }
 
     // Note: Skills (技能定义) are prepended to the first message in send() method

@@ -426,11 +426,26 @@ export interface ToolInfoConfirmationDetails {
   urls?: string[];
 }
 
-export type ToolCallConfirmationDetails = ToolEditConfirmationDetails | ToolExecuteConfirmationDetails | ToolMcpConfirmationDetails | ToolInfoConfirmationDetails;
+export interface ToolAskUserConfirmationDetails {
+  type: 'ask_user';
+  title: string;
+  questions: Array<{ question: string; header?: string }>;
+  onConfirm: (outcome: ToolConfirmationOutcome, payload?: { answers: Record<string, string> }) => Promise<void>;
+}
+
+export interface ToolExitPlanModeConfirmationDetails {
+  type: 'exit_plan_mode';
+  title: string;
+  planPath: string;
+  onConfirm: (outcome: ToolConfirmationOutcome, payload?: { answers: Record<string, string> }) => Promise<void>;
+}
+
+export type ToolCallConfirmationDetails = ToolEditConfirmationDetails | ToolExecuteConfirmationDetails | ToolMcpConfirmationDetails | ToolInfoConfirmationDetails | ToolAskUserConfirmationDetails | ToolExitPlanModeConfirmationDetails;
 
 export enum ToolConfirmationOutcome {
   ProceedOnce = 'proceed_once',
   ProceedAlways = 'proceed_always',
+  ProceedAlwaysAndSave = 'proceed_always_and_save',
   ProceedAlwaysServer = 'proceed_always_server',
   ProceedAlwaysTool = 'proceed_always_tool',
   ModifyWithEditor = 'modify_with_editor',

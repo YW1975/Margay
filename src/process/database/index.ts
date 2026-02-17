@@ -10,12 +10,85 @@ import BetterSqlite3 from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
 import { runMigrations as executeMigrations } from './migrations';
-import { CURRENT_DB_VERSION, getDatabaseVersion, initSchema, setDatabaseVersion } from './schema';
+import { CURRENT_DB_VERSION, getDatabaseVersion, initSchema, setDatabaseVersion, verifySchemaIntegrity } from './schema';
 import type { IConversationRow, IMessageRow, IPaginatedResult, IQueryResult, IUser, TChatConversation, TMessage } from './types';
 import { conversationToRow, messageToRow, rowToConversation, rowToMessage } from './types';
 import type { IChannelPluginConfig, IChannelUser, IChannelSession, IChannelPairingRequest, IChannelUserRow, IChannelSessionRow, IChannelPairingCodeRow, PluginType, PluginStatus } from '@/channels/types';
 import { rowToChannelUser, rowToChannelSession, rowToPairingRequest } from '@/channels/types';
 import { encryptCredentials, decryptCredentials } from '@/channels/utils/credentialCrypto';
+
+/**
+ * Synchronous pre-migration backup of the database file.
+ * Copies the main DB + WAL + SHM files to timestamped backups.
+ * Non-blocking on failure — logs a warning and continues.
+ */
+function backupDatabaseSync(db: Database.Database, dbPath: string, from: number, to: number): void {
+  const timestamp = Date.now();
+  const backupBase = `${dbPath}.pre-migrate-v${from}-to-v${to}.${timestamp}`;
+  try {
+    // Checkpoint WAL to ensure DB file is consistent for file-level copy
+    try {
+      db.pragma('wal_checkpoint(TRUNCATE)');
+    } catch {
+      // WAL checkpoint failure is non-fatal — file copy may still be usable
+    }
+
+    // Main DB file
+    fs.copyFileSync(dbPath, backupBase);
+
+    // WAL file (Write-Ahead Log)
+    const walPath = `${dbPath}-wal`;
+    if (fs.existsSync(walPath)) {
+      fs.copyFileSync(walPath, `${backupBase}-wal`);
+    }
+
+    // SHM file (Shared Memory)
+    const shmPath = `${dbPath}-shm`;
+    if (fs.existsSync(shmPath)) {
+      fs.copyFileSync(shmPath, `${backupBase}-shm`);
+    }
+
+    console.log(`[Database] Pre-migration backup created: ${backupBase}`);
+
+    // Cleanup old backups: keep only the 3 most recent
+    cleanupOldBackups(dbPath);
+  } catch (error) {
+    console.warn('[Database] Pre-migration backup failed (non-blocking):', error);
+  }
+}
+
+/**
+ * Remove old pre-migration backups, keeping only the most recent ones.
+ */
+function cleanupOldBackups(dbPath: string, keep = 3): void {
+  try {
+    const dir = path.dirname(dbPath);
+    const basename = path.basename(dbPath);
+    const files = fs
+      .readdirSync(dir)
+      .filter((f) => f.startsWith(`${basename}.pre-migrate-`) && !f.endsWith('-wal') && !f.endsWith('-shm'))
+      .sort(); // Sorted by name (includes timestamp, so chronological)
+
+    if (files.length <= keep) return;
+
+    const toDelete = files.slice(0, files.length - keep);
+    for (const file of toDelete) {
+      const filePath = path.join(dir, file);
+      try {
+        fs.unlinkSync(filePath);
+        // Also clean up associated WAL/SHM files
+        const walFile = `${filePath}-wal`;
+        const shmFile = `${filePath}-shm`;
+        if (fs.existsSync(walFile)) fs.unlinkSync(walFile);
+        if (fs.existsSync(shmFile)) fs.unlinkSync(shmFile);
+      } catch {
+        // Ignore individual file deletion errors
+      }
+    }
+  } catch {
+    // Cleanup failure is non-fatal
+  }
+}
 
 /**
  * Main database class for Margay
@@ -84,9 +157,16 @@ export class MargayDatabase {
       // Check and run migrations if needed
       const currentVersion = getDatabaseVersion(this.db);
       if (currentVersion < CURRENT_DB_VERSION) {
+        // Pre-migration backup (sync, non-blocking on failure)
+        const dbPath = path.join(getDataPath(), 'margay.db');
+        backupDatabaseSync(this.db, dbPath, currentVersion, CURRENT_DB_VERSION);
+
         this.runMigrations(currentVersion, CURRENT_DB_VERSION);
         setDatabaseVersion(this.db, CURRENT_DB_VERSION);
       }
+
+      // Verify all critical tables/indexes exist (repairs missing ones)
+      verifySchemaIntegrity(this.db);
 
       this.ensureSystemUser();
     } catch (error) {
@@ -1095,11 +1175,17 @@ export class MargayDatabase {
    */
 
   /**
-   * Get all stored approvals
+   * Get all stored approvals, optionally filtered by workspace
    */
-  getGeminiApprovals(): IQueryResult<Array<{ action: string; identifier: string }>> {
+  getGeminiApprovals(workspaceScope?: string): IQueryResult<Array<{ action: string; identifier: string; workspace_scope: string }>> {
     try {
-      const rows = this.db.prepare('SELECT action, identifier FROM gemini_approvals').all() as Array<{ action: string; identifier: string }>;
+      let rows: Array<{ action: string; identifier: string; workspace_scope: string }>;
+      if (workspaceScope !== undefined) {
+        // Return global ('') approvals + workspace-scoped approvals
+        rows = this.db.prepare('SELECT action, identifier, workspace_scope FROM gemini_approvals WHERE workspace_scope = ? OR workspace_scope = ?').all('', workspaceScope) as typeof rows;
+      } else {
+        rows = this.db.prepare('SELECT action, identifier, workspace_scope FROM gemini_approvals').all() as typeof rows;
+      }
       return { success: true, data: rows };
     } catch (error: any) {
       return { success: false, error: error.message, data: [] };
@@ -1107,11 +1193,12 @@ export class MargayDatabase {
   }
 
   /**
-   * Save an approval (upsert)
+   * Save an approval (upsert) with optional workspace scope
+   * workspace_scope = '' means global, non-empty means workspace-specific
    */
-  saveGeminiApproval(action: string, identifier: string): IQueryResult<boolean> {
+  saveGeminiApproval(action: string, identifier: string, workspaceScope = ''): IQueryResult<boolean> {
     try {
-      this.db.prepare(`INSERT INTO gemini_approvals (action, identifier) VALUES (?, ?) ON CONFLICT(action, identifier) DO NOTHING`).run(action, identifier);
+      this.db.prepare(`INSERT INTO gemini_approvals (action, identifier, workspace_scope) VALUES (?, ?, ?) ON CONFLICT(action, identifier, workspace_scope) DO NOTHING`).run(action, identifier, workspaceScope);
       return { success: true, data: true };
     } catch (error: any) {
       return { success: false, error: error.message, data: false };
@@ -1121,9 +1208,9 @@ export class MargayDatabase {
   /**
    * Delete an approval
    */
-  deleteGeminiApproval(action: string, identifier: string): IQueryResult<boolean> {
+  deleteGeminiApproval(action: string, identifier: string, workspaceScope = ''): IQueryResult<boolean> {
     try {
-      this.db.prepare('DELETE FROM gemini_approvals WHERE action = ? AND identifier = ?').run(action, identifier);
+      this.db.prepare('DELETE FROM gemini_approvals WHERE action = ? AND identifier = ? AND workspace_scope = ?').run(action, identifier, workspaceScope);
       return { success: true, data: true };
     } catch (error: any) {
       return { success: false, error: error.message, data: false };
@@ -1131,12 +1218,105 @@ export class MargayDatabase {
   }
 
   /**
-   * Clear all approvals
+   * Clear all approvals, optionally only for a specific workspace
    */
-  clearGeminiApprovals(): IQueryResult<boolean> {
+  clearGeminiApprovals(workspaceScope?: string): IQueryResult<boolean> {
     try {
-      this.db.prepare('DELETE FROM gemini_approvals').run();
+      if (workspaceScope !== undefined) {
+        this.db.prepare('DELETE FROM gemini_approvals WHERE workspace_scope = ?').run(workspaceScope);
+      } else {
+        this.db.prepare('DELETE FROM gemini_approvals').run();
+      }
       return { success: true, data: true };
+    } catch (error: any) {
+      return { success: false, error: error.message, data: false };
+    }
+  }
+
+  /**
+   * ==================
+   * Assistant Memory operations
+   * 助手记忆操作
+   * ==================
+   */
+
+  /**
+   * Upsert a memory index entry (idempotent)
+   */
+  upsertMemoryEntry(entry: { id: string; scope: 'assistant' | 'workspace' | 'org'; ownerId?: string; category: 'fact' | 'preference' | 'decision' | 'context' | 'summary'; summary: string; filePath?: string; sourceConversationId?: string; sourceAssistantId?: string; metadata?: string }): IQueryResult<boolean> {
+    try {
+      const now = Date.now();
+      this.db
+        .prepare(
+          `INSERT INTO assistant_memories (id, scope, owner_id, category, summary, file_path, source_conversation_id, source_assistant_id, created_at, updated_at, metadata)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT(id) DO UPDATE SET
+             summary = excluded.summary,
+             file_path = excluded.file_path,
+             updated_at = excluded.updated_at,
+             metadata = excluded.metadata`
+        )
+        .run(entry.id, entry.scope, entry.ownerId ?? null, entry.category, entry.summary, entry.filePath ?? null, entry.sourceConversationId ?? null, entry.sourceAssistantId ?? null, now, now, entry.metadata ?? null);
+      return { success: true, data: true };
+    } catch (error: any) {
+      return { success: false, error: error.message, data: false };
+    }
+  }
+
+  /**
+   * Get memory entries by scope and optional owner
+   */
+  getMemoryEntries(
+    scope: string,
+    ownerId?: string
+  ): IQueryResult<
+    Array<{
+      id: string;
+      scope: string;
+      ownerId: string | null;
+      category: string;
+      summary: string;
+      filePath: string | null;
+      sourceConversationId: string | null;
+      sourceAssistantId: string | null;
+      createdAt: number;
+      updatedAt: number;
+      metadata: string | null;
+    }>
+  > {
+    try {
+      let rows: any[];
+      if (ownerId) {
+        rows = this.db.prepare('SELECT * FROM assistant_memories WHERE scope = ? AND owner_id = ? ORDER BY updated_at DESC').all(scope, ownerId);
+      } else {
+        rows = this.db.prepare('SELECT * FROM assistant_memories WHERE scope = ? ORDER BY updated_at DESC').all(scope);
+      }
+      const data = rows.map((r: any) => ({
+        id: r.id,
+        scope: r.scope,
+        ownerId: r.owner_id,
+        category: r.category,
+        summary: r.summary,
+        filePath: r.file_path,
+        sourceConversationId: r.source_conversation_id,
+        sourceAssistantId: r.source_assistant_id,
+        createdAt: r.created_at,
+        updatedAt: r.updated_at,
+        metadata: r.metadata,
+      }));
+      return { success: true, data };
+    } catch (error: any) {
+      return { success: false, error: error.message, data: [] };
+    }
+  }
+
+  /**
+   * Delete a memory entry by ID
+   */
+  deleteMemoryEntry(id: string): IQueryResult<boolean> {
+    try {
+      const result = this.db.prepare('DELETE FROM assistant_memories WHERE id = ?').run(id);
+      return { success: true, data: result.changes > 0 };
     } catch (error: any) {
       return { success: false, error: error.message, data: false };
     }

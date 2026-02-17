@@ -1,6 +1,16 @@
 ---
 name: x-recruiter
 description: 用于在 X (x.com) 发布招聘帖子。包含文案规范、图片生成提示和自动化发布脚本。发布 AI 相关岗位或设计类岗位时优先使用。
+dependencies:
+  - type: bin
+    name: node
+    install: 'brew install node'
+  - type: bin
+    name: python3
+    install: 'brew install python3'
+  - type: python
+    name: playwright
+    install: 'pip install playwright && playwright install chromium'
 ---
 
 # X Recruiter (X 招聘助手)

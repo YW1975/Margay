@@ -13,10 +13,14 @@ export type AssistantPreset = {
   ruleFiles: Record<string, string>;
   skillFiles?: Record<string, string>;
   /**
-   * Default enabled skills for this assistant (skill names from skills/ directory).
-   * 此助手默认启用的技能列表（来自 skills/ 目录的技能名称）
+   * Default skills for this assistant (skill names from skills/ directory).
+   * These are priority skills whose full SKILL.md content is associated with the assistant.
+   * All skills remain available via engine-native discovery regardless of this list.
+   * 此助手的默认技能列表（来自 skills/ 目录的技能名称）。
+   * 这些是优先技能，其完整 SKILL.md 内容与助手关联。
+   * 无论此列表如何，所有技能都通过引擎原生发现机制保持可用。
    */
-  defaultEnabledSkills?: string[];
+  defaultSkills?: string[];
   nameI18n: Record<string, string>;
   descriptionI18n: Record<string, string>;
   promptsI18n?: Record<string, string[]>;
@@ -36,7 +40,7 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
       'en-US': 'cowork-skills.md',
       'zh-CN': 'cowork-skills.zh-CN.md',
     },
-    defaultEnabledSkills: ['skill-creator', 'pptx', 'docx', 'pdf', 'xlsx'],
+    defaultSkills: ['skill-creator', 'pptx', 'docx', 'pdf', 'xlsx', 'memory-manager'],
     nameI18n: {
       'en-US': 'Cowork',
       'zh-CN': 'Cowork',
@@ -195,7 +199,7 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
       'en-US': 'social-job-publisher-skills.md',
       'zh-CN': 'social-job-publisher-skills.zh-CN.md',
     },
-    defaultEnabledSkills: ['xiaohongshu-recruiter', 'x-recruiter'],
+    defaultSkills: ['xiaohongshu-recruiter', 'x-recruiter', 'memory-manager'],
     nameI18n: {
       'en-US': 'Social Job Publisher',
       'zh-CN': '社交招聘发布助手',
@@ -222,7 +226,7 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
       'en-US': 'moltbook-skills.md',
       'zh-CN': 'moltbook-skills.zh-CN.md',
     },
-    defaultEnabledSkills: ['moltbook'],
+    defaultSkills: ['moltbook', 'memory-manager'],
     nameI18n: {
       'en-US': 'moltbook',
       'zh-CN': 'moltbook',
@@ -237,26 +241,26 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
     },
   },
   {
-    id: 'social-media-monitor',
+    id: 'social-media-ops',
     avatar: '📡',
     presetAgentType: 'gemini',
-    resourceDir: 'assistant/social-media-monitor',
+    resourceDir: 'assistant/social-media-ops',
     ruleFiles: {
-      'en-US': 'social-media-monitor.md',
-      'zh-CN': 'social-media-monitor.zh-CN.md',
+      'en-US': 'social-media-ops.md',
+      'zh-CN': 'social-media-ops.zh-CN.md',
     },
-    defaultEnabledSkills: ['social-monitor', 'cron'],
+    defaultSkills: ['social-ops', 'cron', 'shell-bg', 'memory-manager'],
     nameI18n: {
-      'en-US': 'Social Media Monitor',
-      'zh-CN': '社交媒体监控',
+      'en-US': 'Social Media Ops',
+      'zh-CN': '社交媒体运营',
     },
     descriptionI18n: {
-      'en-US': 'Track engagement on your posts across X, HN, and Reddit. Auto-reply, generate digests, schedule monitoring.',
-      'zh-CN': '跟踪你在 X、HN、Reddit 上的帖子反馈，自动回帖、生成摘要、定时监控。',
+      'en-US': 'Full social media operations — scan, post, reply, digest across X, Reddit, HN, and GitHub. Dry-run safety for all writes.',
+      'zh-CN': '全功能社媒运营 — 扫描、发帖、回复、摘要，覆盖 X、Reddit、HN、GitHub。写操作 dry-run 安全机制。',
     },
     promptsI18n: {
-      'en-US': ['Scan my recent X posts for replies', 'Check comments on my HN submission', 'Generate a weekly social media digest', 'Set up daily monitoring at 9 AM'],
-      'zh-CN': ['扫描我最近的推文回复', '查看我 HN 提交的评论', '生成本周社交媒体摘要', '设置每天早上 9 点自动监控'],
+      'en-US': ['Scan my social media across all platforms', 'Post an update to X', 'Generate a weekly social media digest', 'Track our GitHub repo activity'],
+      'zh-CN': ['扫描所有平台的社媒互动', '在 X 上发一条更新', '生成本周社交媒体摘要', '追踪我们的 GitHub 仓库动态'],
     },
   },
   {
@@ -268,7 +272,7 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
       'en-US': 'beautiful-mermaid.md',
       'zh-CN': 'beautiful-mermaid.zh-CN.md',
     },
-    defaultEnabledSkills: ['mermaid'],
+    defaultSkills: ['mermaid', 'memory-manager'],
     nameI18n: {
       'en-US': 'Beautiful Mermaid',
       'zh-CN': 'Beautiful Mermaid',
@@ -291,7 +295,7 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
       'en-US': 'my-love.md',
       'zh-CN': 'my-love.zh-CN.md',
     },
-    defaultEnabledSkills: ['cron'],
+    defaultSkills: ['cron', 'memory-manager'],
     nameI18n: {
       'en-US': 'My Love',
       'zh-CN': '喵爱',

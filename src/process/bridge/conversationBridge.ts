@@ -444,6 +444,7 @@ export function initConversationBridge(): void {
     }
     const keys = GeminiApprovalStore.createKeysFromConfirmation(action, commandType);
     if (keys.length === 0) return false;
-    return task.approvalStore.allApproved(keys);
+    // Check both global and workspace-scoped approvals
+    return task.approvalStore.allApprovedWithWorkspace(keys, task.workspace);
   });
 }

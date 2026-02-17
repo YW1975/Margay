@@ -660,9 +660,106 @@ const migration_v14: IMigration = {
 };
 
 /**
+ * Migration v14 -> v15: Add assistant_memories table for cross-session memory
+ * Stores memory index entries for the four-layer memory system (L2-L4)
+ */
+const migration_v15: IMigration = {
+  version: 15,
+  name: 'Add assistant_memories table',
+  up: (db) => {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS assistant_memories (
+        id TEXT PRIMARY KEY,
+        scope TEXT NOT NULL CHECK(scope IN ('assistant', 'workspace', 'org')),
+        owner_id TEXT,
+        category TEXT NOT NULL CHECK(category IN ('fact', 'preference', 'decision', 'context', 'summary')),
+        summary TEXT NOT NULL,
+        file_path TEXT,
+        source_conversation_id TEXT,
+        source_assistant_id TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        metadata TEXT
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_memories_scope ON assistant_memories(scope);
+      CREATE INDEX IF NOT EXISTS idx_memories_owner ON assistant_memories(owner_id);
+      CREATE INDEX IF NOT EXISTS idx_memories_updated ON assistant_memories(updated_at DESC);
+    `);
+    console.log('[Migration v15] Added assistant_memories table');
+  },
+  down: (db) => {
+    db.exec(`
+      DROP INDEX IF EXISTS idx_memories_updated;
+      DROP INDEX IF EXISTS idx_memories_owner;
+      DROP INDEX IF EXISTS idx_memories_scope;
+      DROP TABLE IF EXISTS assistant_memories;
+    `);
+    console.log('[Migration v15] Rolled back: Removed assistant_memories table');
+  },
+};
+
+/**
+ * Migration v15 -> v16: Rebuild gemini_approvals with workspace_scope column
+ * Enables workspace-scoped approval persistence (e.g., "Always Allow for This Workspace")
+ */
+const migration_v16: IMigration = {
+  version: 16,
+  name: 'Add workspace_scope to gemini_approvals',
+  up: (db) => {
+    // Table rebuild: old schema had UNIQUE(action, identifier) which blocks
+    // workspace-specific rows with the same action+identifier.
+    // Must drop old indexes before creating new ones with same names.
+    db.exec(`
+      DROP INDEX IF EXISTS idx_gemini_approvals_action;
+
+      ALTER TABLE gemini_approvals RENAME TO _gemini_approvals_old;
+
+      CREATE TABLE gemini_approvals (
+        action TEXT NOT NULL,
+        identifier TEXT NOT NULL DEFAULT '',
+        workspace_scope TEXT NOT NULL DEFAULT '',
+        PRIMARY KEY (action, identifier, workspace_scope)
+      );
+
+      INSERT INTO gemini_approvals (action, identifier, workspace_scope)
+        SELECT action, COALESCE(identifier, ''), ''
+        FROM _gemini_approvals_old;
+
+      DROP TABLE _gemini_approvals_old;
+
+      CREATE INDEX idx_gemini_approvals_action ON gemini_approvals(action);
+      CREATE INDEX idx_gemini_approvals_workspace ON gemini_approvals(workspace_scope);
+    `);
+    console.log('[Migration v16] Rebuilt gemini_approvals with workspace_scope');
+  },
+  down: (db) => {
+    db.exec(`
+      ALTER TABLE gemini_approvals RENAME TO _gemini_approvals_ws;
+
+      CREATE TABLE gemini_approvals (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        action TEXT NOT NULL,
+        identifier TEXT NOT NULL DEFAULT '',
+        UNIQUE(action, identifier)
+      );
+
+      CREATE INDEX idx_gemini_approvals_action ON gemini_approvals(action);
+
+      INSERT OR IGNORE INTO gemini_approvals (action, identifier)
+        SELECT action, identifier
+        FROM _gemini_approvals_ws;
+
+      DROP TABLE _gemini_approvals_ws;
+    `);
+    console.log('[Migration v16] Rolled back: Removed workspace_scope from gemini_approvals');
+  },
+};
+
+/**
  * All migrations in order
  */
-export const ALL_MIGRATIONS: IMigration[] = [migration_v1, migration_v2, migration_v3, migration_v4, migration_v5, migration_v6, migration_v7, migration_v8, migration_v9, migration_v10, migration_v11, migration_v12, migration_v13, migration_v14];
+export const ALL_MIGRATIONS: IMigration[] = [migration_v1, migration_v2, migration_v3, migration_v4, migration_v5, migration_v6, migration_v7, migration_v8, migration_v9, migration_v10, migration_v11, migration_v12, migration_v13, migration_v14, migration_v15, migration_v16];
 
 /**
  * Get migrations needed to upgrade from one version to another

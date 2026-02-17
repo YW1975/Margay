@@ -1,4 +1,12 @@
-const { createCanvas, loadImage, registerFont } = require('canvas');
+let canvas;
+try {
+  canvas = require('canvas');
+} catch {
+  console.error('Installing canvas (first run)...');
+  require('child_process').execSync('npm install canvas', { stdio: 'inherit', cwd: __dirname });
+  canvas = require('canvas');
+}
+const { createCanvas, loadImage, registerFont } = canvas;
 const fs = require('fs');
 const path = require('path');
 

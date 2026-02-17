@@ -1,6 +1,13 @@
 ---
 name: mermaid
 description: Render Mermaid diagrams as SVG or ASCII art using beautiful-mermaid. Use when users need to create flowcharts, sequence diagrams, state diagrams, class diagrams, or ER diagrams. Supports both graphical SVG output and terminal-friendly ASCII/Unicode output.
+dependencies:
+  - type: npm
+    name: tsx
+    install: 'npm install -g tsx'
+  - type: npm
+    name: beautiful-mermaid
+    install: 'npm install -g beautiful-mermaid'
 ---
 
 # Mermaid Diagram Renderer

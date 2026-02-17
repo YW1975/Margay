@@ -61,17 +61,9 @@ class CronService {
   }
 
   /**
-   * Add a new cron job
-   * @throws Error if conversation already has a cron job (one job per conversation limit)
+   * Add a new cron job. Multiple jobs per conversation are supported.
    */
   async addJob(params: CreateCronJobParams): Promise<CronJob> {
-    // Check if conversation already has a cron job (one job per conversation limit)
-    const existingJobs = cronStore.listByConversation(params.conversationId);
-    if (existingJobs.length > 0) {
-      const existingJob = existingJobs[0];
-      throw new Error(`This conversation already has a scheduled task "${existingJob.name}" (ID: ${existingJob.id}). Please delete it first before creating a new one, or use [CRON_LIST] to view existing tasks.`);
-    }
-
     const now = Date.now();
     const jobId = `cron_${uuid()}`;
 
