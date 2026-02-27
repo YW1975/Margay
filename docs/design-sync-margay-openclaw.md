@@ -431,24 +431,507 @@ POST   /api/v1/auth/token              # 认证获取 token
 
 ---
 
-## 九、新增文件清单
+## 九、对话中长任务推送到云端 OpenClaw
+
+### 9.1 场景分析
+
+除了定时任务的云端同步，还有一个更常见的场景：**用户在对话中让助手执行一个耗时较长的任务**（如代码重构、数据分析、批量文件处理等），希望把这个任务推送到云端 OpenClaw 继续执行，本地不需要保持连接。
+
+**当前执行模型的约束**：
+
+| 约束 | 说明 |
+|------|------|
+| 进程绑定 | AcpAgentManager 在 Electron 主进程内运行，关闭 Margay 即终止 |
+| stdio 管道 | AcpConnection 通过 JSON-RPC over stdio 与 CLI 进程通信，不可跨网络 |
+| 会话状态 | acpSessionId 存在 SQLite 中，但会话上下文在本地 CLI 进程内存里 |
+| 权限审批 | 执行工具调用时需要用户交互式审批（除非 yoloMode） |
+| 本地文件依赖 | Agent 的 workspace、skills 文件都在本地磁盘 |
+
+### 9.2 架构设计：Task Offloading（任务卸载）
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Margay Desktop                           │
+│                                                                 │
+│  ┌──────────────┐    ┌──────────────────┐    ┌───────────────┐  │
+│  │ AcpAgent     │───►│ TaskOffloader    │───►│ CloudTaskApi  │  │
+│  │ Manager      │    │                  │    │ (REST+WS)     │  │
+│  │ (local exec) │    │ • snapshot ctx   │    │               │  │
+│  └──────────────┘    │ • upload files   │    └───────┬───────┘  │
+│        │             │ • switch to proxy│            │          │
+│  ┌─────┴──────┐      └──────────────────┘            │          │
+│  │ Conversation│                                     │          │
+│  │ UI (React)  │◄───── WebSocket ────────────────────┘          │
+│  │ • progress  │     (实时推送执行状态)                           │
+│  │ • results   │                                                 │
+│  └─────────────┘                                                │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                         HTTPS + WSS
+                              │
+┌─────────────────────────────▼───────────────────────────────────┐
+│                       OpenClaw Cloud                            │
+│                                                                 │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │  Task Execution Engine                                    │  │
+│  │                                                           │  │
+│  │  ┌──────────────┐    ┌────────────┐    ┌──────────────┐   │  │
+│  │  │ Task Queue   │───►│ Agent Pool │───►│ Result Store │   │  │
+│  │  │ (接收任务)    │    │ (OpenClaw  │    │ (执行结果)    │   │  │
+│  │  │              │    │  sandbox)  │    │              │   │  │
+│  │  └──────────────┘    └────────────┘    └──────────────┘   │  │
+│  │                           │                               │  │
+│  │                    ┌──────┴──────┐                         │  │
+│  │                    │ Cloud       │                         │  │
+│  │                    │ Workspace   │                         │  │
+│  │                    │ (文件快照)   │                         │  │
+│  │                    └─────────────┘                         │  │
+│  └───────────────────────────────────────────────────────────┘  │
+│                                                                 │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │  Notification Gateway                                     │  │
+│  │  • WebSocket push → Margay (实时进度)                      │  │
+│  │  • Webhook → Channel plugins (完成通知)                    │  │
+│  └───────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 9.3 核心流程：任务卸载（Task Offloading）
+
+用户在对话中点击 "推送到云端" 按钮触发：
+
+```
+Step 1: 上下文快照 (Context Snapshot)
+    │
+    ├─ 提取当前对话历史 (messages[])
+    ├─ 提取助手配置 (assistantRule, enabledSkills)
+    ├─ 提取 Agent 配置 (model, backend, acpSessionId)
+    ├─ 打包 workspace 关键文件 (可选，用户勾选)
+    └─ 生成 TaskSnapshot 对象
+
+Step 2: 上传到云端 (Upload)
+    │
+    ├─ POST /api/v1/tasks/offload  ── 上传 TaskSnapshot
+    ├─ 如果有文件 → 分块上传到 Cloud Workspace
+    └─ 云端返回 cloudTaskId + wsChannel
+
+Step 3: 本地切换为代理模式 (Proxy Mode)
+    │
+    ├─ 停止本地 AcpAgent 进程 (agent.stop())
+    ├─ 将 AcpAgentManager 替换为 CloudProxyManager
+    ├─ CloudProxyManager 连接 WebSocket 订阅云端进度
+    └─ UI 显示 "云端执行中..." + 实时进度
+
+Step 4: 云端执行 (Cloud Execution)
+    │
+    ├─ 云端 Agent Pool 启动 OpenClaw Agent
+    ├─ 加载对话历史 + skills + rules
+    ├─ 继续执行用户的原始请求
+    ├─ 工具调用策略：
+    │   ├─ 白名单工具 → 自动执行
+    │   ├─ 需审批工具 → WebSocket 推送到 Margay 让用户审批
+    │   └─ 文件操作 → 在 Cloud Workspace 内执行
+    └─ 实时推送 streaming updates 到 Margay
+
+Step 5: 结果回收 (Result Collection)
+    │
+    ├─ 执行完成后，云端发送 finish 信号
+    ├─ Margay 拉取完整执行结果
+    ├─ 更新本地对话历史 (合并云端新消息)
+    ├─ 如有文件变更 → 可选下载到本地 workspace
+    └─ CloudProxyManager 切回正常模式
+```
+
+### 9.4 TaskSnapshot 数据结构
+
+```typescript
+interface TaskSnapshot {
+  // 任务标识
+  taskId: string;                      // 本地生成的唯一 ID
+  conversationId: string;              // 对应的本地对话 ID
+  createdAt: number;
+
+  // 对话上下文
+  context: {
+    messages: SnapshotMessage[];       // 对话历史（可截断到最近 N 轮）
+    pendingMessage?: string;           // 尚未完成的用户请求
+    agentSessionId?: string;           // ACP session ID (用于 resume)
+  };
+
+  // Agent 配置
+  agent: {
+    backend: string;                   // 'openclaw' | 'claude' | ...
+    model?: string;                    // 模型选择
+    rules?: string;                    // 助手预设规则 (assistant rule)
+    skills: SkillManifest[];           // 启用的 skill 列表 + 内容
+    mcpServers?: McpServerConfig[];    // MCP 服务器配置
+  };
+
+  // 执行策略
+  execution: {
+    permissionPolicy: PermissionPolicy;
+    maxDurationMs: number;             // 最长执行时间 (默认 30 min)
+    notifyOnComplete: boolean;         // 完成后通知
+    notifyChannels?: string[];         // 'telegram' | 'lark' | 'discord'
+  };
+
+  // 文件快照（可选）
+  workspace?: {
+    files: WorkspaceFile[];            // 需要的文件列表
+    uploadId?: string;                 // 已上传文件的引用 ID
+  };
+}
+
+// 权限策略
+interface PermissionPolicy {
+  mode: 'auto-approve' | 'ask-user' | 'whitelist';
+  whitelist?: string[];                // 允许自动执行的工具名
+  // ask-user: 通过 WebSocket 推送到 Margay 让用户审批
+  // auto-approve: 类似 yoloMode
+  // whitelist: 只自动执行白名单中的工具
+}
+```
+
+### 9.5 CloudProxyManager（云端代理管理器）
+
+替代 AcpAgentManager，在本地任务被推送到云端后接管通信：
+
+```typescript
+// src/process/task/CloudProxyManager.ts
+
+class CloudProxyManager extends BaseAgentManager {
+  private ws: WebSocket;
+  private cloudTaskId: string;
+
+  constructor(data: {
+    conversation_id: string;
+    cloudTaskId: string;
+    wsEndpoint: string;
+    authToken: string;
+  }) {
+    super(data);
+    this.cloudTaskId = data.cloudTaskId;
+  }
+
+  async init(): Promise<void> {
+    // 连接云端 WebSocket
+    this.ws = new WebSocket(data.wsEndpoint);
+    this.ws.on('message', this.handleCloudMessage.bind(this));
+  }
+
+  private handleCloudMessage(raw: string): void {
+    const message = JSON.parse(raw);
+
+    switch (message.type) {
+      case 'stream_update':
+        // 透传 streaming 消息到 UI（与本地 ACP 格式兼容）
+        const responseMsg = this.transformCloudMessage(message);
+        addOrUpdateMessage(this.conversation_id, responseMsg);
+        ipcBridge.acpConversation.responseStream.emit(responseMsg);
+        break;
+
+      case 'permission_request':
+        // 云端需要用户审批某个工具调用
+        this.addConfirmation(message.callId, message.toolInfo);
+        break;
+
+      case 'finish':
+        // 云端执行完成
+        this.handleCloudFinish(message);
+        break;
+
+      case 'error':
+        this.handleCloudError(message);
+        break;
+    }
+  }
+
+  // 用户审批后，将结果推回云端
+  async confirm(id: string, callId: string, data: AcpPermissionOption): Promise<void> {
+    this.ws.send(JSON.stringify({
+      type: 'permission_response',
+      callId,
+      decision: data.optionId,  // 'allow' | 'reject'
+    }));
+  }
+
+  // 发送追加消息（用户在云端执行期间继续输入）
+  async sendMessage(data: { content: string }): Promise<void> {
+    this.ws.send(JSON.stringify({
+      type: 'user_message',
+      content: data.content,
+    }));
+  }
+
+  async stop(): Promise<void> {
+    // 请求云端取消任务
+    this.ws.send(JSON.stringify({ type: 'cancel' }));
+    this.ws.close();
+  }
+}
+```
+
+### 9.6 UI 交互设计
+
+#### 推送入口
+
+在对话界面中，当 Agent 正在执行长任务时，显示一个浮动操作按钮：
+
+```
+┌──────────────────────────────────────────────┐
+│  🔄 Agent 正在执行...  (已运行 2m30s)         │
+│                                              │
+│  [推送到云端执行]  [取消任务]                   │
+└──────────────────────────────────────────────┘
+```
+
+或者在发送消息时就可以选择执行位置：
+
+```
+┌──────────────────────────────────────────────┐
+│  输入框                                       │
+│  ┌────────────────────────────────────────┐  │
+│  │ 请帮我重构整个 src/utils 目录...         │  │
+│  └────────────────────────────────────────┘  │
+│  [发送 ▼]                                    │
+│    ├─ 本地执行 (默认)                         │
+│    └─ 云端执行                               │
+└──────────────────────────────────────────────┘
+```
+
+#### 云端执行状态
+
+```
+┌──────────────────────────────────────────────┐
+│  ☁️ 云端执行中  (OpenClaw Cloud)              │
+│  ────────────────────────────────────────── │
+│  ▶ 正在分析代码结构...                        │
+│  ✅ 已完成 3/8 个文件的重构                    │
+│  ▶ 正在处理 src/utils/parser.ts              │
+│                                              │
+│  [拉回本地]  [取消]                           │
+│                                              │
+│  ⚠️ 需要审批：Agent 要执行 rm 命令             │
+│  [允许]  [拒绝]  [总是允许]                    │
+└──────────────────────────────────────────────┘
+```
+
+### 9.7 关键问题与解决方案
+
+#### Q1: 对话历史太长怎么办？
+
+```typescript
+// 智能截断策略
+function truncateForCloud(messages: Message[]): SnapshotMessage[] {
+  const MAX_CONTEXT_TOKENS = 50000;
+
+  // 1. 保留 system prompt（rules + skills）
+  // 2. 保留最近 N 轮对话
+  // 3. 对更早的对话做摘要压缩
+  // 4. 保留所有 tool_call 结果（重要上下文）
+
+  return smartTruncate(messages, MAX_CONTEXT_TOKENS);
+}
+```
+
+#### Q2: 本地文件依赖怎么处理？
+
+三种策略，按任务特点选择：
+
+| 策略 | 做法 | 适用场景 |
+|------|------|----------|
+| **不传文件** | Agent 在云端沙箱中工作，无本地文件 | 纯对话/知识问答/API 调用类任务 |
+| **选择性上传** | 用户勾选必需文件，打包上传到 Cloud Workspace | 代码审查、文档处理 |
+| **Git 仓库挂载** | 云端克隆用户的 Git 仓库，执行完后提 PR | 代码重构、批量修改 |
+
+#### Q3: 工具调用的权限怎么控制？
+
+```typescript
+// 分层权限模型
+const CLOUD_PERMISSION_TIERS = {
+  // Tier 1: 自动允许（安全、只读）
+  auto_allow: [
+    'Read', 'Glob', 'Grep', 'WebFetch', 'WebSearch',
+    'ListDirectory', 'GetFileInfo',
+  ],
+
+  // Tier 2: 需要用户审批（有副作用）
+  ask_user: [
+    'Write', 'Edit', 'Bash', 'NotebookEdit',
+    'CreateFile', 'DeleteFile',
+  ],
+
+  // Tier 3: 云端禁止（危险操作）
+  deny: [
+    'Bash:rm -rf', 'Bash:git push --force',
+    'Bash:sudo', 'Bash:curl|sh',
+  ],
+};
+```
+
+#### Q4: Margay 离线了怎么办？
+
+```
+云端执行中 + Margay 断开连接
+    │
+    ├─ 遇到 auto_allow 的工具 → 继续自动执行
+    ├─ 遇到 ask_user 的工具 →
+    │   ├─ 有预设 whitelist → 自动允许
+    │   └─ 无预设 → 暂停执行，等待 Margay 重连或超时
+    │
+    └─ 执行完成 →
+        ├─ 存储结果到 Result Store
+        ├─ 通过 Channel (Telegram/Lark) 发送完成通知
+        └─ Margay 重连后自动拉取结果
+```
+
+#### Q5: 如何实现 "正在执行中" 的任务平滑迁移？
+
+这是最复杂的场景——任务已经在本地开始执行了一部分，中途想推送到云端。
+
+```typescript
+// 方案 A: 中断-重启 (Interrupt & Restart) — 推荐
+async function offloadRunningTask(manager: AcpAgentManager): Promise<string> {
+  // 1. 停止本地 Agent
+  await manager.stop();
+
+  // 2. 提取已完成的对话历史作为上下文
+  const messages = getMessagesForConversation(manager.conversation_id);
+
+  // 3. 构造 snapshot，包含 "请继续完成以下任务" 的 meta 提示
+  const snapshot: TaskSnapshot = {
+    context: {
+      messages: truncateForCloud(messages),
+      pendingMessage: '请继续完成上面的任务。之前的执行已在本地完成了一部分，请基于对话历史继续。',
+    },
+    // ...
+  };
+
+  // 4. 上传并在云端启动新 session
+  const { cloudTaskId } = await cloudApi.offloadTask(snapshot);
+
+  // 5. 切换到 CloudProxyManager
+  WorkerManage.replaceTask(manager.conversation_id, new CloudProxyManager({ cloudTaskId }));
+
+  return cloudTaskId;
+}
+
+// 方案 B: Session 迁移 (Session Migration) — 理想但依赖后端支持
+// 如果 OpenClaw ACP 支持 session export/import：
+async function migrateSession(manager: AcpAgentManager): Promise<string> {
+  // 1. 导出本地 ACP session 状态
+  const sessionState = await manager.agent.exportSession();
+
+  // 2. 上传 session state 到云端
+  const { cloudTaskId } = await cloudApi.importSession(sessionState);
+
+  // 3. 云端恢复 session 继续执行
+  // 这要求 ACP 协议支持 session serialization
+}
+```
+
+**推荐方案 A（中断-重启）**，原因：
+- 不依赖 ACP 协议扩展
+- 大模型有能力从对话历史恢复上下文
+- 实现复杂度低
+- 兼容所有 ACP 后端（不止 OpenClaw）
+
+### 9.8 集成到现有代码的改动点
+
+| 改动文件 | 改动内容 |
+|----------|----------|
+| `AcpAgentManager.ts` | 新增 `offloadToCloud()` 方法，构造 TaskSnapshot |
+| `WorkerManage.ts` | 新增 `replaceTask()` 方法，支持运行时替换 manager |
+| `conversationBridge.ts` | 新增 `offloadToCloud` / `pullBackFromCloud` IPC |
+| `ipcBridge.ts` | 新增 `cloud.*` namespace (offload, status, cancel, pullBack) |
+| `BaseAgentManager.ts` | 新增 `isCloudProxy` 属性标识当前是否为代理模式 |
+| 新增 `CloudProxyManager.ts` | WebSocket 代理管理器 |
+| 新增 `TaskOffloader.ts` | 快照构造 + 上传逻辑 |
+| 新增 `CloudTaskApi.ts` | 云端任务 API 客户端 |
+| UI: 对话页面 | 添加 "推送到云端" 按钮和云端执行状态组件 |
+
+### 9.9 与定时任务同步的关系
+
+这两个功能互补但独立：
+
+```
+┌─────────────────────────┐    ┌─────────────────────────┐
+│ 定时任务同步 (CronSync)  │    │ 对话任务卸载 (Offload)  │
+│                         │    │                         │
+│ • 预定义的周期性任务     │    │ • 临时的、一次性长任务   │
+│ • 主要同步任务定义       │    │ • 主要传输执行上下文     │
+│ • 离线接管为核心价值     │    │ • 释放本地资源为核心价值  │
+│ • CronService 驱动      │    │ • 用户手动触发           │
+│ • 使用 SyncEngine       │    │ • 使用 TaskOffloader     │
+│                         │    │                         │
+│ 共享：CloudTaskApi,     │    │ 共享：CloudTaskApi,      │
+│   认证, WebSocket 通道   │    │   认证, WebSocket 通道    │
+└─────────────────────────┘    └─────────────────────────┘
+```
+
+---
+
+## 十、完整新增文件清单
 
 ```
 src/process/services/sync/
-├── SyncEngine.ts              # 同步引擎核心
+├── SyncEngine.ts              # 定时任务同步引擎
 ├── SyncStore.ts               # 同步状态持久化
-├── CloudSchedulerApi.ts       # 云端 API 客户端
+├── CloudSchedulerApi.ts       # 云端定时任务 API 客户端
 ├── types.ts                   # 同步相关类型定义
 └── conflictResolver.ts        # 冲突解决策略
 
+src/process/services/cloud/
+├── TaskOffloader.ts           # 对话任务卸载（快照 + 上传）
+├── CloudTaskApi.ts            # 云端任务执行 API 客户端
+├── CloudProxyManager.ts       # WebSocket 代理管理器
+└── types.ts                   # 云端任务相关类型
+
 src/process/bridges/
-└── syncBridge.ts              # IPC Bridge for sync
+├── syncBridge.ts              # 定时任务同步 IPC Bridge
+└── cloudBridge.ts             # 云端任务卸载 IPC Bridge
 
 src/renderer/pages/settings/
-└── SyncSettings.tsx           # 同步设置页面
+└── SyncSettings.tsx           # 同步 & 云端设置页面
+
+src/renderer/components/cloud/
+├── OffloadButton.tsx          # "推送到云端" 操作按钮
+├── CloudExecutionStatus.tsx   # 云端执行实时状态组件
+├── PermissionRelay.tsx        # 云端权限审批透传组件
+└── CloudResultViewer.tsx      # 云端执行结果查看
 
 src/renderer/components/cron/
-└── ExecutionPolicySelector.tsx # 执行策略选择组件
-└── SyncStatusBadge.tsx        # 同步状态徽标
+├── ExecutionPolicySelector.tsx # 执行策略选择组件
+├── SyncStatusBadge.tsx        # 同步状态徽标
 └── CloudExecutionLog.tsx      # 云端执行日志查看
 ```
+
+---
+
+## 十一、实现优先级建议
+
+综合两个场景（定时任务同步 + 对话任务卸载），建议的实施顺序：
+
+### Phase 1: 基础设施 (Week 1-2)
+- OpenClawCloudConfig 配置 UI + 认证
+- CloudTaskApi 基础通信层
+- WebSocket 连接管理
+- 数据库 migration (sync_state, cloud_tasks 表)
+
+### Phase 2: 对话任务卸载 MVP (Week 3-4)
+- TaskOffloader: 对话快照构造 + 上传
+- CloudProxyManager: WebSocket 代理接收云端消息
+- UI: "推送到云端" 按钮 + 基本状态展示
+- 云端 API: 接收 snapshot → 启动 Agent → 流式返回
+
+### Phase 3: 定时任务同步 (Week 5-6)
+- SyncEngine: 全量 + 增量同步
+- CronService 集成同步钩子
+- 心跳 + 离线检测 + 云端接管
+- UI: 执行策略选择 + 同步状态
+
+### Phase 4: 完善体验 (Week 7-8)
+- 权限审批透传（WebSocket relay）
+- 文件上传/下载 + Git 仓库挂载
+- Channel 通知集成（完成后推送 Telegram/Lark）
+- 冲突解决 UI + 多设备协同
