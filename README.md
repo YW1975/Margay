@@ -1,3 +1,5 @@
+
+
 <p align="center">
   <img src="resources/icon.png" alt="Margay" width="120" />
 </p>
@@ -71,6 +73,7 @@ Access Margay from any browser — no Electron window required.
 ```bash
 npm run webui          # Local access (http://localhost:3000)
 npm run webui:remote   # Remote network access (0.0.0.0)
+npm run webui:prod     # Production mode (local access)
 ```
 
 For detailed WebUI setup across all platforms (Windows, macOS, Linux, Android/Termux), password reset, and environment variables, see [WEBUI_GUIDE.md](WEBUI_GUIDE.md).
